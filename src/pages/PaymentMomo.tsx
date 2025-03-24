@@ -60,12 +60,15 @@ const PaymentMomo: React.FC = () => {
         // Clear cart after successful payment
         clearCart();
         
+        // Xóa dữ liệu đơn hàng tạm thời từ localStorage
+        localStorage.removeItem('pending_order');
+        
         // Chờ hiển thị thông báo thành công trước khi chuyển trang
         setTimeout(() => {
           navigate('/order-confirmation', {
             state: {
+              ...orderInfo,
               success: true,
-              orderNumber: orderInfo?.orderNumber,
               paymentId: `MOMO${Date.now()}`
             }
           });

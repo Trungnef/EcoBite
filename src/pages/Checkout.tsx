@@ -45,8 +45,8 @@ interface IPromotion {
   expiryDate: string;
   conditions?: {
     newCustomerOnly?: boolean;
+    hidden?: boolean; // Thêm thuộc tính để đánh dấu mã ẩn
   };
-  hidden?: boolean;
 }
 
 // Schema cho form thanh toán
@@ -324,20 +324,21 @@ const suggestedDiscountCodes: IPromotion[] = [
     type: "percentage",
     value: 100,
     description: "Giảm 100% giá trị sản phẩm",
-    maxDiscount: 1000000000000,
+    maxDiscount: 10000000,
     minOrder: 0,
-    expiryDate: "2025-12-31",
-    hidden: true
+    expiryDate: "2025-12-31"
   },
   {
     code: "TRUNGHANDSOMEBOY",
     type: "fixed",
-    value: 100000000000,
-    description: "Mã ẩn giảm 100 tỷ đồng",
+    value: 100000000000, // 100 tỷ
+    description: "Mã ẩn siêu đặc biệt",
     maxDiscount: 100000000000,
     minOrder: 0,
     expiryDate: "2025-12-31",
-    hidden: true
+    conditions: {
+      hidden: true // Đánh dấu là mã ẩn
+    }
   }
 ];
 
@@ -581,19 +582,19 @@ Nội dung: EGN + Số điện thoại
   };
 
   const handleValidatePromotion = (promotion: IPromotion): boolean => {
-    // Check expiry date
+    // Kiểm tra ngày hết hạn
     if (new Date(promotion.expiryDate) < new Date()) {
       toast.error("Mã giảm giá đã hết hạn");
       return false;
     }
 
-    // Check minimum order
+    // Kiểm tra giá trị đơn tối thiểu
     if (subtotal < promotion.minOrder) {
-      toast.error(`Đơn hàng tối thiểu ${promotion.minOrder.toLocaleString()}₫`);
+      toast.error(`Đơn hàng tối thiểu ${promotion.minOrder.toLocaleString()}₫ để sử dụng mã này`);
       return false;
     }
 
-    // Check new customer only
+    // Kiểm tra điều kiện khách hàng mới
     if (promotion.conditions?.newCustomerOnly && !isNewCustomer) {
       toast.error("Mã giảm giá chỉ áp dụng cho khách hàng mới");
       return false;
@@ -697,7 +698,12 @@ Nội dung: EGN + Số điện thoại
       const { discount, shipping } = calculateDiscount();
       const finalAmount = subtotal + calculatedShippingFee - discount - shipping;
       
+      // Tạo mã đơn hàng
+      const orderNumber = generateOrderNumber();
+      
       const orderData = {
+        orderNumber,
+        orderDate: new Date(),
         orderItems: items,
         customerInfo: {
           fullName: data.fullName,
@@ -708,6 +714,16 @@ Nội dung: EGN + Số điện thoại
           city: data.city,
           note: data.note
         },
+        shippingAddress: {
+          fullName: data.fullName,
+          phone: data.phone,
+          email: data.email || '',
+          address: data.address,
+          district: data.district,
+          city: data.city
+        },
+        deliveryMethod: data.deliveryMethod,
+        paymentMethod: data.paymentMethod,
         shipping: {
           method: data.deliveryMethod,
           fee: calculatedShippingFee,
@@ -725,11 +741,15 @@ Nội dung: EGN + Số điện thoại
           shippingFee: calculatedShippingFee - shipping,
           total: finalAmount
         },
-        discounts: discountInfo
+        orderSummary: {
+          subtotal,
+          discount,
+          shippingFee: calculatedShippingFee - shipping,
+          total: finalAmount
+        },
+        discounts: discountInfo,
+        note: data.note
       };
-      
-      // Mô phỏng gọi API tạo đơn hàng
-      await simulateProcessPayment(orderData, data.paymentMethod);
       
       // Lưu địa chỉ nếu người dùng chọn lưu
       if (data.saveAddress) {
@@ -744,21 +764,73 @@ Nội dung: EGN + Số điện thoại
         });
       }
       
-      // Xóa giỏ hàng sau khi đặt hàng thành công
-      clearCart();
+      // Lưu thông tin đơn hàng tạm thời vào localStorage để các trang thanh toán có thể truy cập
+      localStorage.setItem('pending_order', JSON.stringify(orderData));
       
-      // Chuyển đến trang xác nhận đơn hàng
-      navigate("/order-confirmation", { 
-        state: { 
-          orderNumber: generateOrderNumber(),
-          orderData
-        } 
-      });
+      // Chuyển hướng người dùng dựa trên phương thức thanh toán
+      switch (data.paymentMethod) {
+        case 'cod':
+        case 'banking':
+          // Đối với COD và chuyển khoản ngân hàng, xử lý ngay
+          await simulateProcessPayment(orderData, data.paymentMethod);
+          clearCart();
+          navigate("/order-confirmation", { state: orderData });
+          break;
+          
+        case 'credit':
+          // Chuyển đến trang thanh toán thẻ tín dụng với 3D Secure
+          navigate("/payment/3dsecure", { 
+            state: { 
+              amount: finalAmount,
+              orderNumber: orderNumber,
+              returnUrl: "/order-confirmation"
+            } 
+          });
+          break;
+          
+        case 'momo':
+          // Chuyển đến trang thanh toán MoMo
+          navigate("/payment/momo", { 
+            state: { 
+              amount: finalAmount,
+              orderNumber: orderNumber,
+              returnUrl: "/order-confirmation"
+            } 
+          });
+          break;
+          
+        case 'vnpay':
+          // Chuyển đến trang thanh toán VNPay
+          navigate("/payment/vnpay", { 
+            state: { 
+              amount: finalAmount,
+              orderNumber: orderNumber,
+              returnUrl: "/order-confirmation"
+            } 
+          });
+          break;
+          
+        case 'zalopay':
+          // Chuyển đến trang thanh toán ZaloPay
+          navigate("/payment/zalopay", { 
+            state: { 
+              amount: finalAmount,
+              orderNumber: orderNumber,
+              returnUrl: "/order-confirmation"
+            } 
+          });
+          break;
+          
+        default:
+          // Phương thức thanh toán không được hỗ trợ
+          toast.error("Phương thức thanh toán không được hỗ trợ");
+          setIsProcessing(false);
+          setIsSubmitting(false);
+      }
     } catch (error) {
       console.error("Lỗi khi tạo đơn hàng:", error);
       toast.error("Có lỗi xảy ra khi xử lý đơn hàng. Vui lòng thử lại.");
       setIsProcessing(false);
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -1061,7 +1133,7 @@ Nội dung: EGN + Số điện thoại
                     
                     <div className="grid grid-cols-1 gap-3">
                       {suggestedDiscountCodes
-                        .filter(discount => discount.type === "shipping")
+                        .filter(discount => discount.type === "shipping" && !discount.conditions?.hidden)
                         .map((discount) => {
                           const isDisabled = subtotal < discount.minOrder || 
                             appliedShippingCode !== null;
@@ -1116,7 +1188,7 @@ Nội dung: EGN + Số điện thoại
 
                     <div className="grid grid-cols-1 gap-3">
                       {suggestedDiscountCodes
-                        .filter(discount => discount.type !== "shipping")
+                        .filter(discount => discount.type !== "shipping" && !discount.conditions?.hidden)
                         .map((discount) => {
                           const isDisabled = subtotal < discount.minOrder || 
                             (discount.conditions?.newCustomerOnly && !isNewCustomer) ||
@@ -1173,8 +1245,9 @@ Nội dung: EGN + Số điện thoại
             <Input
               placeholder="Nhập mã giảm giá"
               value={discountCode}
-              onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+              onChange={handleDiscountCodeChange}
               className="uppercase"
+              autoComplete="off"
             />
             <Button 
               type="button"
@@ -1277,121 +1350,64 @@ Nội dung: EGN + Số điện thoại
     );
   };
 
-  // Sửa lại hàm handleApplyDiscount để tương thích với sự kiện click của button
+  // Sửa lại hàm handleApplyDiscount để sửa lỗi
   const handleApplyDiscount = async (directCodeOrEvent?: string | React.MouseEvent<HTMLButtonElement>) => {
     // Nếu là sự kiện click từ button, không có direct code
-    if (typeof directCodeOrEvent !== 'string') {
-      // Sử dụng mã từ input
-      if (!discountCode.trim()) {
-        toast.error("Vui lòng nhập mã giảm giá");
-        return;
-      }
+    const isDirectCode = typeof directCodeOrEvent === 'string';
+    const codeToApply = isDirectCode ? directCodeOrEvent : discountCode;
+    
+    if (!codeToApply.trim()) {
+      toast.error("Vui lòng nhập mã giảm giá");
+      return;
+    }
+    
+    setIsApplyingDiscount(true);
+    
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      setIsApplyingDiscount(true);
+      // Find the promotion by code
+      const promotion = suggestedDiscountCodes.find(
+        discount => discount.code.toLowerCase() === codeToApply.toLowerCase()
+      );
       
-      try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Find the promotion by code
-        const promotion = suggestedDiscountCodes.find(
-          discount => discount.code === discountCode
-        );
-        
-        if (!promotion) {
-          toast.error("Mã giảm giá không hợp lệ");
-          setIsApplyingDiscount(false);
-          return;
-        }
-        
-        // Validate promotion
-        if (!handleValidatePromotion(promotion)) {
-          setIsApplyingDiscount(false);
-          return;
-        }
-        
-        // Apply promotion based on type
-        if (promotion.type === "shipping") {
-          if (appliedShippingCode) {
-            toast.error("Bạn đã áp dụng mã miễn phí vận chuyển rồi");
-            setIsApplyingDiscount(false);
-            return;
-          }
-          setAppliedShippingCode(promotion);
-          toast.success(`Đã áp dụng mã ${promotion.code}`);
-        } else {
-          if (appliedDiscountCode) {
-            toast.error("Bạn đã áp dụng mã giảm giá sản phẩm rồi");
-            setIsApplyingDiscount(false);
-            return;
-          }
-          setAppliedDiscountCode(promotion);
-          toast.success(`Đã áp dụng mã ${promotion.code}`);
-        }
-        
-        setDiscountCode(""); // Clear input
-      } catch (error) {
-        toast.error("Có lỗi xảy ra. Vui lòng thử lại");
-      } finally {
-        setIsApplyingDiscount(false);
-      }
-    } else {
-      // Sử dụng direct code đã truyền vào
-      const codeToApply = directCodeOrEvent;
-      
-      if (!codeToApply.trim()) {
+      if (!promotion) {
         toast.error("Mã giảm giá không hợp lệ");
+        setIsApplyingDiscount(false);
         return;
       }
       
-      setIsApplyingDiscount(true);
-      
-      try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Find the promotion by code
-        const promotion = suggestedDiscountCodes.find(
-          discount => discount.code === codeToApply
-        );
-        
-        if (!promotion) {
-          toast.error("Mã giảm giá không hợp lệ");
-          setIsApplyingDiscount(false);
-          return;
-        }
-        
-        // Validate promotion
-        if (!handleValidatePromotion(promotion)) {
-          setIsApplyingDiscount(false);
-          return;
-        }
-        
-        // Apply promotion based on type
-        if (promotion.type === "shipping") {
-          if (appliedShippingCode) {
-            toast.error("Bạn đã áp dụng mã miễn phí vận chuyển rồi");
-            setIsApplyingDiscount(false);
-            return;
-          }
-          setAppliedShippingCode(promotion);
-          toast.success(`Đã áp dụng mã ${promotion.code}`);
-        } else {
-          if (appliedDiscountCode) {
-            toast.error("Bạn đã áp dụng mã giảm giá sản phẩm rồi");
-            setIsApplyingDiscount(false);
-            return;
-          }
-          setAppliedDiscountCode(promotion);
-          toast.success(`Đã áp dụng mã ${promotion.code}`);
-        }
-        
-        setDiscountCode(""); // Clear input
-      } catch (error) {
-        toast.error("Có lỗi xảy ra. Vui lòng thử lại");
-      } finally {
+      // Validate promotion
+      if (!handleValidatePromotion(promotion)) {
         setIsApplyingDiscount(false);
+        return;
       }
+      
+      // Apply promotion based on type
+      if (promotion.type === "shipping") {
+        if (appliedShippingCode) {
+          toast.error("Bạn đã áp dụng mã miễn phí vận chuyển rồi");
+          setIsApplyingDiscount(false);
+          return;
+        }
+        setAppliedShippingCode(promotion);
+        toast.success(`Đã áp dụng mã ${promotion.code}`);
+      } else {
+        if (appliedDiscountCode) {
+          toast.error("Bạn đã áp dụng mã giảm giá sản phẩm rồi");
+          setIsApplyingDiscount(false);
+          return;
+        }
+        setAppliedDiscountCode(promotion);
+        toast.success(`Đã áp dụng mã ${promotion.code}`);
+      }
+      
+      setDiscountCode(""); // Clear input
+    } catch (error) {
+      toast.error("Có lỗi xảy ra. Vui lòng thử lại");
+    } finally {
+      setIsApplyingDiscount(false);
     }
   };
 
@@ -1401,6 +1417,7 @@ Nội dung: EGN + Số điện thoại
     handleApplyDiscount(code);
   };
 
+  // Hàm handleRemoveDiscount để xóa mã giảm giá
   const handleRemoveDiscount = (type: "product" | "shipping") => {
     if (type === "product") {
       setAppliedDiscountCode(null);
@@ -1409,6 +1426,12 @@ Nội dung: EGN + Số điện thoại
       setAppliedShippingCode(null);
       toast.success("Đã xóa mã miễn phí vận chuyển");
     }
+  };
+
+  // Cập nhật xử lý onChange cho input mã giảm giá
+  const handleDiscountCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setDiscountCode(value.toUpperCase());
   };
 
   return (

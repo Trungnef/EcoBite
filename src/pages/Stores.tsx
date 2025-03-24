@@ -6,10 +6,46 @@ import { StoreCard } from "@/components/StoreCard";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, MapPin, Store, X, Map, Grid3X3, Star, TrendingUp, Filter } from "lucide-react";
+import { Search, MapPin, Store, X, Map, Grid3X3, Star, TrendingUp, Filter, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { motion, AnimatePresence } from "framer-motion";
+
+// Animation variants
+const pageVariants = {
+  initial: {
+    opacity: 0,
+    y: 20
+  },
+  animate: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.6,
+      ease: "easeOut"
+    }
+  },
+  exit: {
+    opacity: 0,
+    y: -20
+  }
+};
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 }
+};
 
 // Sample data - expanded from the PartnerStores component
 const allStores = [
@@ -105,6 +141,135 @@ const sortOptions = [
   { value: "popular", label: "Phổ Biến Nhất" }
 ];
 
+interface FilterComponentsProps {
+  searchTerm: string;
+  setSearchTerm: (value: string) => void;
+  selectedCities: string[];
+  selectedCategories: string[];
+  showOnlyVerified: boolean;
+  minRating: number;
+  clearFilters: () => void;
+  toggleCity: (city: string) => void;
+  toggleCategory: (category: string) => void;
+  setShowOnlyVerified: (value: boolean) => void;
+  setMinRating: (value: number) => void;
+}
+
+const FilterComponents = ({
+  searchTerm,
+  setSearchTerm,
+  selectedCities,
+  selectedCategories,
+  showOnlyVerified,
+  minRating,
+  clearFilters,
+  toggleCity,
+  toggleCategory,
+  setShowOnlyVerified,
+  setMinRating
+}: FilterComponentsProps) => {
+  return (
+    <>
+      <div className="mb-6">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Tìm kiếm cửa hàng..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+      </div>
+      
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="font-medium">Bộ lọc</h3>
+        {(searchTerm || selectedCities.length > 0 || selectedCategories.length > 0 || showOnlyVerified || minRating > 0) && (
+          <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 px-2 text-xs">
+            <X className="h-3 w-3 mr-1" />
+            Xóa tất cả
+          </Button>
+        )}
+      </div>
+      
+      <div className="space-y-6">
+        <div>
+          <div className="flex items-center">
+            <MapPin className="h-4 w-4 text-primary mr-2 flex-shrink-0" />
+            <h4 className="text-sm font-medium mb-2">Thành phố</h4>
+          </div>
+          <div className="flex flex-col gap-2">
+            {cities.map(city => (
+              <Button
+                key={city}
+                variant="ghost"
+                className={`justify-start h-8 px-2 w-full text-left ${
+                  selectedCities.includes(city) 
+                    ? "bg-primary/10 text-primary font-medium" 
+                    : "text-muted-foreground"
+                }`}
+                onClick={() => toggleCity(city)}
+              >
+                {city}
+              </Button>
+            ))}
+          </div>
+        </div>
+        
+        <div>
+          <h4 className="text-sm font-medium mb-3">Danh mục</h4>
+          <div className="flex flex-col gap-2">
+            {categories.map(category => (
+              <Button
+                key={category}
+                variant="ghost"
+                className={`justify-start h-8 px-2 w-full text-left ${
+                  selectedCategories.includes(category) 
+                    ? "bg-primary/10 text-primary font-medium" 
+                    : "text-muted-foreground"
+                }`}
+                onClick={() => toggleCategory(category)}
+              >
+                {category}
+              </Button>
+            ))}
+          </div>
+        </div>
+        
+        <div>
+          <h4 className="text-sm font-medium mb-3">Đánh giá tối thiểu</h4>
+          <div className="flex flex-wrap gap-2 mb-2">
+            {[0, 3, 3.5, 4, 4.5].map(rating => (
+              <Badge
+                key={rating}
+                variant={minRating === rating ? "default" : "outline"}
+                className="cursor-pointer"
+                onClick={() => setMinRating(rating)}
+              >
+                <div className="flex items-center gap-1">
+                  <Star className={cn("h-4 w-4", minRating >= rating ? "fill-amber-400 text-amber-400" : "text-gray-300")} />
+                  <span>{rating > 0 ? rating : "Tất cả"}</span>
+                </div>
+              </Badge>
+            ))}
+          </div>
+        </div>
+        
+        <div className="flex items-center">
+          <Checkbox 
+            id="verified-filter"
+            checked={showOnlyVerified}
+            onCheckedChange={() => setShowOnlyVerified(!showOnlyVerified)}
+          />
+          <Label htmlFor="verified-filter" className="ml-2 text-sm cursor-pointer">
+            Chỉ hiển thị cửa hàng đã xác minh
+          </Label>
+        </div>
+      </div>
+    </>
+  );
+};
+
 const Stores = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCities, setSelectedCities] = useState<string[]>([]);
@@ -117,6 +282,7 @@ const Stores = () => {
   const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
   const [showOnlyVerified, setShowOnlyVerified] = useState(false);
   const [minRating, setMinRating] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -196,277 +362,173 @@ const Stores = () => {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       
-      <main className="flex-grow pt-24">
-        <Container>
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">Cửa Hàng Đối Tác</h1>
-            <p className="text-muted-foreground">
-              Khám phá mạng lưới cửa hàng và siêu thị đối tác của chúng tôi trên khắp Việt Nam
-            </p>
-          </div>
-          
-          {/* Featured Stores */}
-          {featuredStores.length > 0 && (
-            <div className="mb-12">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold flex items-center">
-                  <TrendingUp className="h-5 w-5 mr-2 text-primary" />
-                  Cửa Hàng Nổi Bật
-                </h2>
-                <Button variant="ghost" size="sm" className="text-sm">
-                  Xem tất cả
-                </Button>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {featuredStores.map((store, index) => (
-                  <StoreCard
-                    key={store.id}
-                    {...store}
-                    className="opacity-0 animate-fade-in-up"
-                    style={{ 
-                      animationDelay: `${100 * index}ms`, 
-                      animationFillMode: 'forwards' 
-                    }}
-                  />
-                ))}
-              </div>
+      <AnimatePresence mode="wait">
+        <motion.main 
+          className="flex-grow pt-24"
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          variants={pageVariants}
+        >
+          {/* Hero Section with Enhanced Background */}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8 }}
+            className="relative bg-gradient-to-b from-primary/10 to-background py-16 mb-8 overflow-hidden"
+          >
+            {/* Animated background elements */}
+            <div className="absolute inset-0">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,128,0,0.08),transparent_60%)]"></div>
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(0,128,0,0.05),transparent_70%)]"></div>
+              <motion.div
+                className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl"
+                animate={{
+                  scale: [1, 1.2, 1],
+                  opacity: [0.3, 0.5, 0.3]
+                }}
+                transition={{
+                  duration: 8,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+              />
+              <motion.div
+                className="absolute bottom-0 left-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl"
+                animate={{
+                  scale: [1.2, 1, 1.2],
+                  opacity: [0.5, 0.3, 0.5]
+                }}
+                transition={{
+                  duration: 8,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+              />
             </div>
-          )}
-          
-          <div className="flex flex-col lg:flex-row gap-6">
-            {/* Filters - Mobile */}
-            <div className="lg:hidden flex items-center justify-between mb-4">
-              <div className="relative w-full mr-2">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  placeholder="Tìm kiếm cửa hàng..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              <Button 
-                variant="outline" 
-                size="icon"
-                onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                className="flex-shrink-0"
+
+            <Container>
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="relative text-center"
               >
-                <Filter className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            {isFiltersOpen && (
-              <div className="lg:hidden bg-white rounded-lg border p-4 mb-4 animate-fade-in-up">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-medium">Bộ lọc</h3>
-                  <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 px-2 text-xs">
-                    Xóa tất cả
-                  </Button>
-                </div>
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                  className="inline-block px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6"
+                >
+                  Khám phá cửa hàng đối tác
+                </motion.div>
+
+                <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60">
+                  Cửa Hàng Đối Tác
+                </h1>
                 
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="text-sm font-medium mb-2">Thành phố</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {cities.map(city => (
-                        <Badge
-                          key={city}
-                          variant={selectedCities.includes(city) ? "default" : "outline"}
-                          className="cursor-pointer"
-                          onClick={() => toggleCity(city)}
-                        >
-                          {city}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-sm font-medium mb-2">Danh mục</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {categories.map(category => (
-                        <Badge
-                          key={category}
-                          variant={selectedCategories.includes(category) ? "default" : "outline"}
-                          className="cursor-pointer"
-                          onClick={() => toggleCategory(category)}
-                        >
-                          {category}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-sm font-medium mb-2">Đánh giá tối thiểu</h4>
-                    <div className="flex items-center gap-2">
-                      {[0, 3, 3.5, 4, 4.5].map(rating => (
-                        <Badge
-                          key={rating}
-                          variant={minRating === rating ? "default" : "outline"}
-                          className="cursor-pointer"
-                          onClick={() => setMinRating(rating)}
-                        >
-                          <div className="flex items-center gap-1">
-                            <Star className={cn("h-4 w-4", minRating >= rating ? "fill-amber-400 text-amber-400" : "text-gray-300")} />
-                            <span>{rating > 0 ? rating : "Tất cả"}</span>
-                          </div>
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center">
-                    <Checkbox 
-                      id="verified-filter-mobile"
-                      checked={showOnlyVerified}
-                      onCheckedChange={() => setShowOnlyVerified(!showOnlyVerified)}
-                    />
-                    <Label htmlFor="verified-filter-mobile" className="ml-2 text-sm cursor-pointer">
-                      Chỉ hiển thị cửa hàng đã xác minh
-                    </Label>
-                  </div>
-                </div>
-                
-                <Button className="w-full mt-4" onClick={() => setIsFiltersOpen(false)}>
-                  Áp dụng bộ lọc
-                </Button>
-              </div>
-            )}
-            
-            {/* Filters - Desktop */}
-            <div className="hidden lg:block w-72 flex-shrink-0">
-              <div className="bg-white rounded-lg border p-6 sticky top-24">
-                <div className="mb-6">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                    <Input
-                      placeholder="Tìm kiếm cửa hàng..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-9"
-                    />
-                  </div>
-                </div>
-                
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-medium">Bộ lọc</h3>
-                  {(searchTerm || selectedCities.length > 0 || selectedCategories.length > 0 || showOnlyVerified || minRating > 0) && (
-                    <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 px-2 text-xs">
-                      <X className="h-3 w-3 mr-1" />
-                      Xóa tất cả
-                    </Button>
-                  )}
-                </div>
-                
-                <div className="space-y-6">
-                  <div>
-                    <div className="flex items-center">
-                      <MapPin className="h-4 w-4 text-primary mr-2 flex-shrink-0" />
-                      <h4 className="text-sm font-medium mb-2">Thành phố</h4>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      {cities.map(city => (
-                        <Button
-                          key={city}
-                          variant="ghost"
-                          className={`justify-start h-8 px-2 w-full text-left ${
-                            selectedCities.includes(city) 
-                              ? "bg-primary/10 text-primary font-medium" 
-                              : "text-muted-foreground"
-                          }`}
-                          onClick={() => toggleCity(city)}
-                        >
-                          {city}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-sm font-medium mb-3">Danh mục</h4>
-                    <div className="flex flex-col gap-2">
-                      {categories.map(category => (
-                        <Button
-                          key={category}
-                          variant="ghost"
-                          className={`justify-start h-8 px-2 w-full text-left ${
-                            selectedCategories.includes(category) 
-                              ? "bg-primary/10 text-primary font-medium" 
-                              : "text-muted-foreground"
-                          }`}
-                          onClick={() => toggleCategory(category)}
-                        >
-                          {category}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-sm font-medium mb-3">Đánh giá tối thiểu</h4>
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {[0, 3, 3.5, 4, 4.5].map(rating => (
-                        <Badge
-                          key={rating}
-                          variant={minRating === rating ? "default" : "outline"}
-                          className="cursor-pointer"
-                          onClick={() => setMinRating(rating)}
-                        >
-                          <div className="flex items-center gap-1">
-                            <Star className={cn("h-4 w-4", minRating >= rating ? "fill-amber-400 text-amber-400" : "text-gray-300")} />
-                            <span>{rating > 0 ? rating : "Tất cả"}</span>
-                          </div>
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center">
-                    <Checkbox 
-                      id="verified-filter"
-                      checked={showOnlyVerified}
-                      onCheckedChange={() => setShowOnlyVerified(!showOnlyVerified)}
-                    />
-                    <Label htmlFor="verified-filter" className="ml-2 text-sm cursor-pointer">
-                      Chỉ hiển thị cửa hàng đã xác minh
-                    </Label>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Stores Grid */}
-            <div className="flex-grow">
-              <div className="mb-6 flex items-center justify-between">
-                <p className="text-muted-foreground text-sm">
-                  Hiển thị <span className="font-medium text-foreground">{filteredStores.length}</span> kết quả
+                <p className="text-muted-foreground mx-auto max-w-2xl mb-8 text-lg">
+                  Khám phá mạng lưới cửa hàng và siêu thị đối tác của chúng tôi trên khắp Việt Nam
                 </p>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1">
-                    <Button 
-                      variant={viewMode === "grid" ? "default" : "outline"} 
-                      size="icon" 
-                      className="h-8 w-8"
-                      onClick={() => setViewMode("grid")}
-                    >
-                      <Grid3X3 className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant={viewMode === "map" ? "default" : "outline"} 
-                      size="icon" 
-                      className="h-8 w-8"
-                      onClick={() => setViewMode("map")}
-                    >
-                      <Map className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  
+                
+                {/* Enhanced search bar */}
+                <motion.div 
+                  className="relative max-w-xl mx-auto hidden sm:block"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.4 }}
+                >
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
+                  <Input
+                    placeholder="Tìm kiếm cửa hàng..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 pr-4 h-12 text-base rounded-full border-primary/20 shadow-sm focus:border-primary transition-all duration-300"
+                  />
+                  <Button 
+                    className="absolute right-1 top-1/2 transform -translate-y-1/2 rounded-full h-10 transition-all duration-300 hover:scale-105"
+                    size="sm"
+                  >
+                    Tìm kiếm
+                  </Button>
+                </motion.div>
+                
+                {/* Animated scroll indicator */}
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.8, duration: 0.5 }}
+                  className="flex justify-center mt-12"
+                >
+                  <motion.div
+                    animate={{
+                      y: [0, 10, 0],
+                    }}
+                    transition={{
+                      duration: 1.5,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }}
+                  >
+                    <ChevronDown className="h-8 w-8 text-primary opacity-70" />
+                  </motion.div>
+                </motion.div>
+              </motion.div>
+            </Container>
+          </motion.div>
+
+          {/* Main Content */}
+          <Container>
+            <motion.div 
+              className="flex flex-col lg:flex-row gap-6"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+            >
+              {/* Desktop Filters */}
+              <motion.div 
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5 }}
+                className="hidden lg:block w-72 flex-shrink-0"
+              >
+                <div className="bg-white rounded-lg border shadow-sm p-6 sticky top-24">
+                  <FilterComponents 
+                    searchTerm={searchTerm}
+                    setSearchTerm={setSearchTerm}
+                    selectedCities={selectedCities}
+                    selectedCategories={selectedCategories}
+                    showOnlyVerified={showOnlyVerified}
+                    minRating={minRating}
+                    clearFilters={clearFilters}
+                    toggleCity={toggleCity}
+                    toggleCategory={toggleCategory}
+                    setShowOnlyVerified={setShowOnlyVerified}
+                    setMinRating={setMinRating}
+                  />
+                </div>
+              </motion.div>
+              
+              {/* Stores Grid */}
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="flex-grow"
+              >
+                <div className="mb-6 flex items-center justify-between bg-white p-3 rounded-lg shadow-sm">
+                  <motion.p 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.5 }}
+                    className="text-muted-foreground text-sm"
+                  >
+                    Hiển thị <span className="font-medium text-primary">{filteredStores.length}</span> kết quả
+                  </motion.p>
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground hidden sm:inline">Sắp xếp theo:</span>
                     <select 
-                      className="bg-white border rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                      className="bg-white border rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value)}
                     >
@@ -478,52 +540,84 @@ const Stores = () => {
                     </select>
                   </div>
                 </div>
-              </div>
-              
-              {viewMode === "grid" ? (
-                filteredStores.length > 0 ? (
-                  <div className={`grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 transition-all duration-1000 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-                    {filteredStores.map((store, index) => (
-                      <StoreCard
-                        key={store.id}
-                        {...store}
-                        className="opacity-0 animate-fade-in-up"
-                        style={{ 
-                          animationDelay: `${100 * index}ms`, 
-                          animationFillMode: 'forwards' 
-                        }}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-16 animate-fade-in">
-                    <div className="mb-4 text-muted-foreground">
-                      <Store className="h-12 w-12 mx-auto opacity-20" />
-                    </div>
-                    <h3 className="text-lg font-medium mb-2">Không tìm thấy cửa hàng nào</h3>
-                    <p className="text-muted-foreground">
-                      Hãy thử điều chỉnh tiêu chí tìm kiếm hoặc bộ lọc của bạn
-                    </p>
-                    <Button variant="outline" className="mt-4" onClick={clearFilters}>
-                      Xóa tất cả bộ lọc
+                
+                <AnimatePresence mode="wait">
+                  {filteredStores.length > 0 ? (
+                    <motion.div 
+                      key="stores-grid"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+                    >
+                      {filteredStores.map((store, index) => (
+                        <motion.div
+                          key={store.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.5, delay: index * 0.1 }}
+                          whileHover={{ 
+                            y: -5, 
+                            transition: { duration: 0.2 } 
+                          }}
+                        >
+                          <StoreCard
+                            {...store}
+                            className="h-full transition-shadow hover:shadow-md"
+                          />
+                        </motion.div>
+                      ))}
+                    </motion.div>
+                  ) : (
+                    <motion.div 
+                      key="no-results"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="text-center py-16 bg-white rounded-lg shadow-sm"
+                    >
+                      <div className="mb-4 text-muted-foreground">
+                        <Store className="h-12 w-12 mx-auto opacity-20" />
+                      </div>
+                      <h3 className="text-lg font-medium mb-2">Không tìm thấy cửa hàng nào</h3>
+                      <p className="text-muted-foreground max-w-md mx-auto mb-6">
+                        Hãy thử điều chỉnh tiêu chí tìm kiếm hoặc bộ lọc của bạn để xem các cửa hàng khác.
+                      </p>
+                      <Button 
+                        variant="outline" 
+                        className="hover:bg-primary/5" 
+                        onClick={clearFilters}
+                      >
+                        <X className="mr-2 h-4 w-4" />
+                        Xóa Tất Cả Bộ Lọc
+                      </Button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Load more button */}
+                {filteredStores.length > 0 && !isLoading && (
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="mt-8 text-center"
+                  >
+                    <Button 
+                      variant="outline" 
+                      size="lg"
+                      className="px-8 border-primary/20 text-primary hover:bg-primary/5"
+                    >
+                      Xem thêm cửa hàng
                     </Button>
-                  </div>
-                )
-              ) : (
-                <div className="h-[500px] rounded-lg border bg-gray-50 flex items-center justify-center">
-                  <div className="text-center">
-                    <Map className="h-12 w-12 mx-auto text-muted-foreground/40 mb-2" />
-                    <h3 className="text-lg font-medium">Xem Bản Đồ</h3>
-                    <p className="text-muted-foreground text-sm mt-1 max-w-xs mx-auto">
-                      Chế độ xem bản đồ sẽ hiển thị vị trí cửa hàng. Đây là vị trí dành cho tích hợp bản đồ.
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </Container>
-      </main>
+                  </motion.div>
+                )}
+              </motion.div>
+            </motion.div>
+          </Container>
+        </motion.main>
+      </AnimatePresence>
       
       <Footer />
     </div>

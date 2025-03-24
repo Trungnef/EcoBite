@@ -96,6 +96,227 @@ const getProductById = (id: string) => {
       reviewCount: 86,
       qualityVerified: true,
       safetyInspected: true
+    },
+    {
+      id: "3",
+      title: "Bộ Sưu Tập Sữa Cao Cấp",
+      description: "Bộ sản phẩm sữa cao cấp từ trang trại với quy trình sản xuất hữu cơ. Bao gồm sữa tươi, sữa chua và phô mai tươi.",
+      storeId: "store3",
+      storeName: "Trang Trại Tươi",
+      storeImg: "https://images.unsplash.com/photo-1533900298318-6b8da08a523e?q=80&w=150",
+      storeAddress: "78 Dairy Farm, Quận 7, TP. Hồ Chí Minh",
+      storePhone: "+84 123 789 456",
+      storeHours: "6:00 - 20:00",
+      originalPrice: 120000,
+      discountPrice: 75000,
+      discountPercent: 38,
+      images: [
+        "https://images.unsplash.com/photo-1628088062854-d1870b4553da?q=80&w=800",
+        "https://images.unsplash.com/photo-1550583724-b2692b85b150?q=80&w=800",
+        "https://images.unsplash.com/photo-1563636619-e9143da7973b?q=80&w=800"
+      ],
+      expiresIn: "36 giờ",
+      expiryDate: "03/06/2023",
+      category: "Sữa",
+      featured: true,
+      stock: 15,
+      specifications: {
+        origin: "Trang trại địa phương",
+        certifications: ["Hữu cơ", "Không hormone", "Chăn nuôi tự do"],
+        weight: "900g",
+        packaging: "Chai thủy tinh tái sử dụng",
+        storage: "Giữ lạnh ở 2-4°C"
+      },
+      nutritionalInfo: {
+        calories: "Per 100g: 65 kcal",
+        protein: "3.5g",
+        carbs: "5g",
+        fat: "3.7g",
+        calcium: "120mg"
+      }
+    },
+    {
+      id: "4",
+      title: "Hộp Thức Ăn Sẵn",
+      description: "Bữa ăn cân bằng dinh dưỡng được chuẩn bị từ nguyên liệu tươi sạch. Lý tưởng cho những người bận rộn nhưng vẫn muốn ăn uống lành mạnh.",
+      storeId: "store4",
+      storeName: "Nhà Bếp Đô Thị",
+      storeImg: "https://images.unsplash.com/photo-1581349485608-9469926a8e5e?q=80&w=150",
+      storeAddress: "24 Urban Street, Quận 4, TP. Hồ Chí Minh",
+      storePhone: "+84 123 987 654",
+      storeHours: "10:00 - 22:00",
+      originalPrice: 95000,
+      discountPrice: 55000,
+      discountPercent: 42,
+      images: [
+        "https://images.unsplash.com/photo-1511690656952-34342bb7c2f2?q=80&w=800",
+        "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=800",
+        "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?q=80&w=800"
+      ],
+      expiresIn: "12 giờ",
+      expiryDate: "01/06/2023",
+      category: "Thức Ăn Sẵn",
+      featured: false,
+      stock: 10,
+      specifications: {
+        origin: "Nấu tại nhà hàng",
+        certifications: ["Không MSG", "Không chất bảo quản"],
+        weight: "350g",
+        packaging: "Hộp có thể phân hủy sinh học",
+        storage: "Giữ lạnh và ăn trong ngày"
+      },
+      nutritionalInfo: {
+        calories: "350 kcal",
+        protein: "22g",
+        carbs: "45g",
+        fat: "10g",
+        fiber: "5g"
+      }
+    },
+    {
+      id: "5",
+      title: "Hạt Cà Phê Cao Cấp",
+      description: "Hạt cà phê Arabica chất lượng cao từ Tây Nguyên, rang vừa để có hương vị cân bằng với notes của socola và hạt dẻ.",
+      storeId: "store5",
+      storeName: "Bean Palace",
+      storeImg: "https://images.unsplash.com/photo-1516594798947-e65505dbb29d?q=80&w=150",
+      storeAddress: "56 Coffee Street, Quận 1, TP. Hồ Chí Minh",
+      storePhone: "+84 456 789 123",
+      storeHours: "7:00 - 22:00",
+      originalPrice: 220000,
+      discountPrice: 154000,
+      discountPercent: 30,
+      images: [
+        "https://images.unsplash.com/photo-1559925393-8be0ec4767c8?q=80&w=800",
+        "https://images.unsplash.com/photo-1447933601403-0c6688de566e?q=80&w=800",
+        "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?q=80&w=800"
+      ],
+      expiresIn: "72 giờ",
+      expiryDate: "05/06/2023",
+      category: "Đồ Uống",
+      featured: true,
+      stock: 30,
+      specifications: {
+        origin: "Tây Nguyên, Việt Nam",
+        certifications: ["Hữu cơ", "Fair Trade"],
+        weight: "250g",
+        packaging: "Túi có van khí",
+        storage: "Bảo quản nơi khô ráo, tránh ánh nắng"
+      },
+      nutritionalInfo: {
+        note: "Không đường, không chất béo"
+      }
+    },
+    {
+      id: "6",
+      title: "Bộ Sưu Tập Phô Mai Nhập Khẩu",
+      description: "Bộ sưu tập phô mai cao cấp nhập khẩu từ Pháp và Ý, bao gồm Brie, Camembert và Gorgonzola. Lý tưởng cho tiệc hoặc thưởng thức với rượu vang.",
+      storeId: "store6",
+      storeName: "Gourmet Deli",
+      storeImg: "https://images.unsplash.com/photo-1579551053957-ee77f9b970c7?q=80&w=150",
+      storeAddress: "89 Gourmet Street, Quận 2, TP. Hồ Chí Minh",
+      storePhone: "+84 789 123 456",
+      storeHours: "9:00 - 21:00",
+      originalPrice: 350000,
+      discountPrice: 175000,
+      discountPercent: 50,
+      images: [
+        "https://images.unsplash.com/photo-1452195100486-9cc805987862?q=80&w=800",
+        "https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?q=80&w=800",
+        "https://images.unsplash.com/photo-1559561853-08451507cbe7?q=80&w=800"
+      ],
+      expiresIn: "36 giờ",
+      expiryDate: "03/06/2023",
+      category: "Sữa",
+      featured: false,
+      stock: 8,
+      specifications: {
+        origin: "Pháp, Ý",
+        certifications: ["AOC", "Truyền thống"],
+        weight: "450g",
+        packaging: "Hộp gỗ",
+        storage: "Giữ lạnh ở 4-7°C"
+      },
+      nutritionalInfo: {
+        calories: "Per 100g: 350 kcal",
+        protein: "20g",
+        carbs: "2g",
+        fat: "28g",
+        calcium: "650mg"
+      }
+    },
+    {
+      id: "7",
+      title: "Hộp Rau Củ Hữu Cơ",
+      description: "Bộ sưu tập rau củ hữu cơ theo mùa từ các trang trại địa phương, thu hoạch tươi trong ngày. Bao gồm cà rốt, bông cải xanh, rau chân vịt và nhiều loại khác.",
+      storeId: "store7",
+      storeName: "Trang Trại Eco",
+      storeImg: "https://images.unsplash.com/photo-1557844352-761f2565b576?q=80&w=150",
+      storeAddress: "120 Eco Farm Road, Quận 9, TP. Hồ Chí Minh",
+      storePhone: "+84 456 123 789",
+      storeHours: "6:00 - 18:00",
+      originalPrice: 180000,
+      discountPrice: 108000,
+      discountPercent: 40,
+      images: [
+        "https://images.unsplash.com/photo-1567306226840-0a7b13dff158?q=80&w=800",
+        "https://images.unsplash.com/photo-1540420773420-3366772f4999?q=80&w=800",
+        "https://images.unsplash.com/photo-1566385101042-1a0aa0c1268c?q=80&w=800"
+      ],
+      expiresIn: "24 giờ",
+      expiryDate: "02/06/2023",
+      category: "Rau Củ Quả",
+      featured: true,
+      stock: 15,
+      specifications: {
+        origin: "Trang trại địa phương",
+        certifications: ["Hữu cơ", "Không thuốc trừ sâu"],
+        weight: "2kg",
+        packaging: "Túi vải tái sử dụng",
+        storage: "Giữ lạnh ở 2-8°C"
+      },
+      nutritionalInfo: {
+        note: "Giàu vitamin và khoáng chất",
+        detail: "Rau củ tươi giàu vitamin A, C, K và folate"
+      }
+    },
+    {
+      id: "8",
+      title: "Gói Quà Socola",
+      description: "Bộ sưu tập socola thủ công cao cấp từ các loại cacao đặc biệt. Bao gồm các loại socola đen, sữa và trắng với nhiều hương vị độc đáo.",
+      storeId: "store8",
+      storeName: "Sweet Treats",
+      storeImg: "https://images.unsplash.com/photo-1549057446-9f5c6ac91a04?q=80&w=150",
+      storeAddress: "67 Chocolate Avenue, Quận 1, TP. Hồ Chí Minh",
+      storePhone: "+84 789 456 123",
+      storeHours: "10:00 - 22:00",
+      originalPrice: 275000,
+      discountPrice: 137500,
+      discountPercent: 50,
+      images: [
+        "https://images.unsplash.com/photo-1548907040-4d42bdffd89c?q=80&w=800",
+        "https://images.unsplash.com/photo-1549007994-cb92caebd54b?q=80&w=800",
+        "https://images.unsplash.com/photo-1481391319762-47dff72954d9?q=80&w=800"
+      ],
+      expiresIn: "48 giờ",
+      expiryDate: "04/06/2023",
+      category: "Bánh Kẹo",
+      featured: false,
+      stock: 12,
+      specifications: {
+        origin: "Làm thủ công tại cửa hàng",
+        certifications: ["Không phẩm màu nhân tạo", "Fair Trade cacao"],
+        weight: "300g",
+        packaging: "Hộp quà tái chế",
+        storage: "Bảo quản ở nơi mát mẻ, dưới 18°C"
+      },
+      nutritionalInfo: {
+        calories: "Per 100g: 550 kcal",
+        protein: "6g",
+        carbs: "55g",
+        fat: "35g",
+        sugar: "45g"
+      }
     }
   ];
   

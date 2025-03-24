@@ -30,30 +30,42 @@ const OrderConfirmation: React.FC<OrderConfirmationProps> = () => {
     const stateData = location.state;
     if (stateData?.success && stateData?.orderNumber) {
       // Đã redirect từ trang thanh toán
-      const pendingOrder = localStorage.getItem('pending_order');
-      if (pendingOrder) {
-        const orderData = JSON.parse(pendingOrder);
-        setOrder(orderData);
+      if (Object.keys(stateData).length > 3) {
+        // Nếu stateData chứa đầy đủ thông tin đơn hàng (từ ZaloPay, MoMo, VNPay)
+        setOrder(stateData);
         setPaymentInfo({
-          paymentId: stateData?.paymentId || `PAY${Date.now()}`,
-          method: orderData.paymentMethod,
+          paymentId: stateData.paymentId || `PAY${Date.now()}`,
+          method: stateData.paymentMethod,
           status: 'completed',
           time: new Date()
         });
-        // Xóa dữ liệu từ localStorage sau khi đã lấy
-        localStorage.removeItem('pending_order');
       } else {
-        // Trường hợp không tìm thấy dữ liệu đơn hàng
-        setOrder({
-          orderNumber: stateData.orderNumber,
-          orderDate: new Date()
-        });
-        setPaymentInfo({
-          paymentId: stateData?.paymentId || `PAY${Date.now()}`,
-          method: 'unknown',
-          status: 'completed',
-          time: new Date()
-        });
+        // Trường hợp stateData chỉ chứa thông tin cơ bản, lấy từ localStorage
+        const pendingOrder = localStorage.getItem('pending_order');
+        if (pendingOrder) {
+          const orderData = JSON.parse(pendingOrder);
+          setOrder(orderData);
+          setPaymentInfo({
+            paymentId: stateData?.paymentId || `PAY${Date.now()}`,
+            method: orderData.paymentMethod,
+            status: 'completed',
+            time: new Date()
+          });
+          // Xóa dữ liệu từ localStorage sau khi đã lấy
+          localStorage.removeItem('pending_order');
+        } else {
+          // Trường hợp không tìm thấy dữ liệu đơn hàng
+          setOrder({
+            orderNumber: stateData.orderNumber,
+            orderDate: new Date()
+          });
+          setPaymentInfo({
+            paymentId: stateData?.paymentId || `PAY${Date.now()}`,
+            method: 'unknown',
+            status: 'completed',
+            time: new Date()
+          });
+        }
       }
     } else if (location.state) {
       // Đã redirect trực tiếp từ trang checkout (thanh toán khi nhận hàng)
@@ -104,7 +116,7 @@ const OrderConfirmation: React.FC<OrderConfirmationProps> = () => {
                   </div>
                   <div>
                     <h1 className="text-2xl font-bold">Đặt hàng thành công!</h1>
-                    <p>Cảm ơn bạn đã mua hàng tại Expiring Goodies Network</p>
+                    <p>Cảm ơn bạn đã mua hàng tại EcoBite Vietnam</p>
                   </div>
                 </div>
               </div>

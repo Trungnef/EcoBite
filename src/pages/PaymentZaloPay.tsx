@@ -56,12 +56,15 @@ const PaymentZaloPay: React.FC = () => {
         // Clear cart after successful payment
         clearCart();
         
+        // Xóa dữ liệu đơn hàng tạm thời từ localStorage
+        localStorage.removeItem('pending_order');
+        
         // Chờ hiển thị thông báo thành công trước khi chuyển trang
         setTimeout(() => {
           navigate('/order-confirmation', {
             state: {
+              ...orderInfo,
               success: true,
-              orderNumber: orderInfo?.orderNumber,
               paymentId: `ZALO${Date.now()}`
             }
           });
@@ -79,6 +82,7 @@ const PaymentZaloPay: React.FC = () => {
 
   const handleCancel = () => {
     if (window.confirm('Bạn có chắc muốn hủy thanh toán? Đơn hàng của bạn sẽ không được xử lý.')) {
+      localStorage.removeItem('pending_order');
       navigate('/checkout');
     }
   };

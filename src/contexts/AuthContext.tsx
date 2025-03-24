@@ -10,7 +10,7 @@ export interface User {
   role: UserRole;
   storeId?: string; // Only for sellers
   profileImage?: string;
-  favorites?: string[]; // Product IDs for buyers
+  favorites?: any[]; // Updated to accept full Deal objects instead of just IDs
   purchaseHistory?: string[]; // Order IDs for buyers
   loyaltyPoints?: number; // For buyer loyalty program
 }
@@ -23,7 +23,7 @@ interface AuthContextType {
   register: (email: string, password: string, name: string, role: UserRole) => Promise<boolean>;
   logout: () => void;
   updateUser: (userData: Partial<User>) => void;
-  addToFavorites: (productId: string) => void;
+  addToFavorites: (product: any) => void; // Updated to accept a full product object
   removeFromFavorites: (productId: string) => void;
 }
 
@@ -37,7 +37,7 @@ const mockUsers: User[] = [
     email: "buyer@example.com",
     role: "buyer",
     profileImage: "/images/avatars/buyer.jpg",
-    favorites: ["1", "3", "5"],
+    favorites: [],
     purchaseHistory: ["order-123", "order-456"],
     loyaltyPoints: 250
   },
@@ -221,22 +221,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
   
-  const addToFavorites = (productId: string) => {
+  const addToFavorites = (product: any) => {
     if (user && user.role === "buyer") {
       const favorites = user.favorites || [];
-      if (!favorites.includes(productId)) {
+      if (!favorites.some(item => item.id === product.id)) {
         updateUser({ 
-          favorites: [...favorites, productId] 
+          favorites: [...favorites, product] 
         });
         toast.success("Đã thêm vào danh sách yêu thích");
       }
+    } else if (!user) {
+      toast.error("Vui lòng đăng nhập để lưu sản phẩm yêu thích");
     }
   };
   
   const removeFromFavorites = (productId: string) => {
     if (user && user.role === "buyer" && user.favorites) {
       updateUser({ 
-        favorites: user.favorites.filter(id => id !== productId) 
+        favorites: user.favorites.filter(item => item.id !== productId) 
       });
       toast.success("Đã xóa khỏi danh sách yêu thích");
     }

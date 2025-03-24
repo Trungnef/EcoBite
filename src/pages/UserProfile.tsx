@@ -93,6 +93,23 @@ const mockOrders = [
   }
 ];
 
+// Cast product with an interface to fix type issues
+interface DealProduct {
+  id: string;
+  title: string;
+  store: string;
+  storeImg?: string;
+  originalPrice: number;
+  discountPrice: number;
+  discountPercent: number;
+  image: string;
+  expiresIn: string;
+  category: string;
+  location?: string;
+  expiryDate?: string;
+  featured?: boolean;
+}
+
 export default function UserProfile() {
   const { user, isAuthenticated, isLoading, logout, updateUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
@@ -369,12 +386,32 @@ export default function UserProfile() {
                     
                     {user.favorites && user.favorites.length > 0 ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {mockFavorites.map(product => (
-                          <DealCard
-                            key={product.id}
-                            {...product}
-                          />
-                        ))}
+                        {user.favorites.map(product => {
+                          // Cast product to ensure it has the right type
+                          const dealProduct = product as DealProduct;
+                          return (
+                            <DealCard
+                              key={dealProduct.id}
+                              {...dealProduct}
+                              isFavorite={true}
+                              onFavoriteToggle={(isFavorite) => {
+                                if (!isFavorite) {
+                                  // Only handle removal since we know it's already a favorite
+                                  if (user && user.favorites) {
+                                    const updatedFavorites = user.favorites.filter(
+                                      item => item.id !== dealProduct.id
+                                    );
+                                    updateUser({
+                                      ...user,
+                                      favorites: updatedFavorites
+                                    });
+                                    toast.error(`${dealProduct.title} đã được xóa khỏi danh sách yêu thích của bạn`);
+                                  }
+                                }
+                              }}
+                            />
+                          );
+                        })}
                       </div>
                     ) : (
                       <Card className="p-8 text-center">

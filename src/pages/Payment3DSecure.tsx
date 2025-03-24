@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Container } from "@/components/ui/container";
@@ -45,8 +45,16 @@ const Payment: React.FC = () => {
   const [processingVerification, setProcessingVerification] = useState(false);
 
   // Lấy thông tin đơn hàng từ localStorage nếu không có từ location state
-  const savedOrderData = localStorage.getItem('pendingOrder');
+  const savedOrderData = localStorage.getItem('pending_order');
   const pendingOrder = savedOrderData ? JSON.parse(savedOrderData) : null;
+
+  // Kiểm tra nếu không có thông tin đơn hàng
+  useEffect(() => {
+    if (!pendingOrder && !orderData.orderNumber) {
+      toast.error("Không tìm thấy thông tin đơn hàng");
+      navigate("/checkout");
+    }
+  }, [pendingOrder, orderData, navigate]);
 
   // Form cho thông tin thẻ
   const form = useForm<PaymentFormValues>({
@@ -125,7 +133,7 @@ const Payment: React.FC = () => {
         };
 
         // Xóa dữ liệu đơn hàng tạm thời
-        localStorage.removeItem('pendingOrder');
+        localStorage.removeItem('pending_order');
         
         // Xóa giỏ hàng sau khi thanh toán thành công
         clearCart();
@@ -136,7 +144,11 @@ const Payment: React.FC = () => {
         // Ngắt context hiện tại trước khi chuyển trang để tránh lỗi
         setTimeout(() => {
           navigate("/order-confirmation", { 
-            state: orderData,
+            state: {
+              ...orderData,
+              success: true,
+              paymentId: `3DS${Date.now()}`,
+            },
             replace: true  // Thay thế trang hiện tại trong history để ngăn quay lại
           });
         }, 100);

@@ -19,10 +19,16 @@ const PaymentVNPay = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState(1);
+  const [orderInfo, setOrderInfo] = useState<any>(null);
   const { amount, orderNumber, returnUrl } = location.state || {};
 
   useEffect(() => {
-    if (!amount || !orderNumber || !returnUrl) {
+    // Lấy thông tin đơn hàng từ localStorage
+    const orderData = localStorage.getItem('pending_order');
+    if (orderData) {
+      setOrderInfo(JSON.parse(orderData));
+    } else if (!amount || !orderNumber || !returnUrl) {
+      toast.error("Không tìm thấy thông tin đơn hàng");
       navigate("/checkout");
     }
   }, [amount, orderNumber, returnUrl, navigate]);
@@ -38,11 +44,15 @@ const PaymentVNPay = () => {
       
       clearCart();
       
+      // Xóa dữ liệu đơn hàng tạm thời từ localStorage
+      localStorage.removeItem('pending_order');
+      
       navigate(returnUrl, {
         state: {
+          ...orderInfo,
           success: true,
           paymentId: `VNPAY${Date.now()}`,
-          orderNumber
+          orderNumber: orderInfo?.orderNumber || orderNumber
         }
       });
     } catch (error) {
@@ -61,7 +71,10 @@ const PaymentVNPay = () => {
             <Button
               variant="ghost"
               className="pl-0 hover:pl-2 transition-all"
-              onClick={() => navigate("/checkout")}
+              onClick={() => {
+                localStorage.removeItem('pending_order');
+                navigate("/checkout");
+              }}
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Quay lại

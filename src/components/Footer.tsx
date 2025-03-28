@@ -170,10 +170,10 @@ export function Footer() {
 
         <div className="mt-12 pt-6 border-t border-border flex flex-col md:flex-row justify-between items-center">
           <p className="text-sm text-muted-foreground">
-            © {currentYear} EcoBite Vietnam. Tất cả các quyền được bảo lưu.
+            © {currentYear} EcoBite Vietnam. All rights reserved.
           </p>
           <p className="text-sm text-muted-foreground mt-4 md:mt-0">
-            Được làm với 💚 tại Hà Nội
+           Make with 💚 from Hà Nội
           </p>
         </div>
       </Container>

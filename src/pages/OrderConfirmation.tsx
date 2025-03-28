@@ -332,7 +332,35 @@ const OrderConfirmation: React.FC<OrderConfirmationProps> = () => {
                   </div>
                 </div>
 
-                <div className="mt-8 flex justify-center">
+                <div className="mt-8 flex flex-col md:flex-row gap-4 justify-center">
+                  <Button asChild size="lg" variant="outline" className="px-8 group">
+                    <Link 
+                      to="/profile/orders"
+                      state={{ trackOrder: order.orderNumber || order.id || `order-${Date.now()}` }}
+                      className="flex items-center gap-2"
+                      onClick={() => {
+                        // Save comprehensive order data to localStorage
+                        const trackingData = {
+                          orderId: order.orderNumber || order.id || `order-${Date.now()}`,
+                          timestamp: Date.now(),
+                          orderSummary: {
+                            total: order.orderSummary?.total || 0,
+                            items: (order.orderItems || []).length
+                          },
+                          orderItems: order.orderItems || []
+                        };
+                        localStorage.setItem('track_order', trackingData.orderId);
+                        localStorage.setItem('track_order_timestamp', trackingData.timestamp.toString());
+                        localStorage.setItem('track_order_data', JSON.stringify(trackingData));
+                        
+                        console.log("Saving order tracking data:", trackingData);
+                      }}
+                    >
+                      <ClipboardList className="mr-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
+                      Theo dõi đơn hàng
+                    </Link>
+                  </Button>
+                  
                   <Button asChild size="lg" className="px-8 group bg-primary hover:bg-primary/90">
                     <Link to="/deals" className="flex items-center gap-2">
                       Tiếp tục mua sắm

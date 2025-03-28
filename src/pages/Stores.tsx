@@ -6,11 +6,12 @@ import { StoreCard } from "@/components/StoreCard";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, MapPin, Store, X, Map, Grid3X3, Star, TrendingUp, Filter, ChevronDown } from "lucide-react";
+import { Search, MapPin, Store, X, Map, Grid3X3, Star, TrendingUp, Filter, ChevronDown, SlidersHorizontal, Utensils, Clock, Building, Check, Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { motion, AnimatePresence } from "framer-motion";
+import { Drawer, DrawerTrigger, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter, DrawerClose } from "@/components/ui/drawer";
 
 // Animation variants
 const pageVariants = {
@@ -132,15 +133,50 @@ const allStores = [
   }
 ];
 
-const cities = ["Ho Chi Minh City", "Hanoi", "Da Nang"];
-const categories = Array.from(new Set(allStores.map(store => store.category)));
+// Cấu trúc lại cities thành nhóm
+const cityGroups = {
+  "Hanoi": {
+    name: "Hà Nội",
+    districts: ["Ba Dinh District", "Hoan Kiem District", "Dong Da District", "Cau Giay District", "Hai Ba Trung District", "Long Bien District", "Thanh Xuan District"]
+  },
+  "Ho Chi Minh City": {
+    name: "Hồ Chí Minh",
+    districts: ["District 1", "District 2", "District 3", "Thu Duc City", "District 5", "District 7", "District 10", "Binh Thanh District", "Phu Nhuan District"]
+  },
+  "Da Nang": {
+    name: "Đà Nẵng",
+    districts: ["Hai Chau District", "Thanh Khe District", "Son Tra District", "Ngu Hanh Son District", "Lien Chieu District", "Cam Le District"]
+  }
+};
+
+// Tổ chức categories theo nhóm
+const categoryGroups = {
+  "Grocery": {
+    name: "Tạp hóa",
+    types: ["Supermarket", "Organic Market", "Delicatessen"]
+  },
+  "Dining": {
+    name: "Ăn uống",
+    types: ["Restaurant", "Cafe", "Bakery"]
+  },
+  "Specialty": {
+    name: "Đặc sản",
+    types: ["Butcher", "Fishmonger", "Greengrocer", "Cheesemonger"]
+  }
+};
+
+// Flatten categories cho backward compatibility
+const categories = Object.values(categoryGroups).flatMap(group => group.types);
+
+// Cập nhật sort options
 const sortOptions = [
-  { value: "deals", label: "Nhiều Ưu Đãi Nhất" },
-  { value: "name", label: "Tên: A đến Z" },
-  { value: "rating", label: "Đánh Giá Cao Nhất" },
-  { value: "popular", label: "Phổ Biến Nhất" }
+  { value: "deals", label: "Nhiều Ưu Đãi Nhất", icon: <TrendingUp className="h-4 w-4 mr-2" /> },
+  { value: "name", label: "Tên: A đến Z", icon: <ChevronDown className="h-4 w-4 mr-2" /> },
+  { value: "rating", label: "Đánh Giá Cao Nhất", icon: <Star className="h-4 w-4 mr-2 text-amber-400" /> },
+  { value: "popular", label: "Phổ Biến Nhất", icon: <Flame className="h-4 w-4 mr-2 text-orange-500" /> }
 ];
 
+// Cập nhật interface để sử dụng các function mới
 interface FilterComponentsProps {
   searchTerm: string;
   setSearchTerm: (value: string) => void;
@@ -153,6 +189,11 @@ interface FilterComponentsProps {
   toggleCategory: (category: string) => void;
   setShowOnlyVerified: (value: boolean) => void;
   setMinRating: (value: number) => void;
+  expandedSections: Record<string, boolean>;
+  expandedGroups: Record<string, boolean>;
+  toggleSection: (section: string) => void;
+  toggleGroup: (group: string) => void;
+  activeFiltersCount: number;
 }
 
 const FilterComponents = ({
@@ -166,104 +207,297 @@ const FilterComponents = ({
   toggleCity,
   toggleCategory,
   setShowOnlyVerified,
-  setMinRating
+  setMinRating,
+  expandedSections,
+  expandedGroups,
+  toggleSection,
+  toggleGroup,
+  activeFiltersCount
 }: FilterComponentsProps) => {
   return (
     <>
-      <div className="mb-6">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Tìm kiếm cửa hàng..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-      </div>
-      
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="font-medium">Bộ lọc</h3>
+      <div className="flex justify-between items-center mb-5">
+        <h3 className="font-medium text-primary flex items-center gap-2">
+          <SlidersHorizontal className="h-4 w-4" />
+          Bộ lọc
+          {activeFiltersCount > 0 && (
+            <Badge variant="default" className="bg-primary text-white">
+              {activeFiltersCount}
+            </Badge>
+          )}
+        </h3>
         {(searchTerm || selectedCities.length > 0 || selectedCategories.length > 0 || showOnlyVerified || minRating > 0) && (
-          <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 px-2 text-xs">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={clearFilters} 
+            className="h-8 px-2 text-xs hover:bg-red-50 hover:text-red-600 transition-colors"
+          >
             <X className="h-3 w-3 mr-1" />
             Xóa tất cả
           </Button>
         )}
       </div>
       
-      <div className="space-y-6">
-        <div>
-          <div className="flex items-center">
-            <MapPin className="h-4 w-4 text-primary mr-2 flex-shrink-0" />
-            <h4 className="text-sm font-medium mb-2">Thành phố</h4>
-          </div>
-          <div className="flex flex-col gap-2">
-            {cities.map(city => (
-              <Button
-                key={city}
-                variant="ghost"
-                className={`justify-start h-8 px-2 w-full text-left ${
-                  selectedCities.includes(city) 
-                    ? "bg-primary/10 text-primary font-medium" 
-                    : "text-muted-foreground"
-                }`}
-                onClick={() => toggleCity(city)}
+      <div className="space-y-3">
+        {/* Cities Section */}
+        <div className="border rounded-lg overflow-hidden shadow-sm">
+          <button
+            onClick={() => toggleSection('cities')}
+            className="w-full flex items-center justify-between p-3 bg-primary/5 hover:bg-primary/10 transition-colors"
+          >
+            <div className="flex items-center">
+              <MapPin className="h-4 w-4 mr-2 text-primary" />
+              <span className="font-medium">Thành phố</span>
+              {selectedCities.length > 0 && (
+                <Badge variant="default" className="ml-2 bg-primary text-white">
+                  {selectedCities.length}
+                </Badge>
+              )}
+            </div>
+            <ChevronDown className={`h-4 w-4 transition-transform ${expandedSections.cities ? 'rotate-180' : ''}`} />
+          </button>
+          
+          <AnimatePresence>
+            {expandedSections.cities && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="p-3"
               >
-                {city}
-              </Button>
-            ))}
-          </div>
-        </div>
-        
-        <div>
-          <h4 className="text-sm font-medium mb-3">Danh mục</h4>
-          <div className="flex flex-col gap-2">
-            {categories.map(category => (
-              <Button
-                key={category}
-                variant="ghost"
-                className={`justify-start h-8 px-2 w-full text-left ${
-                  selectedCategories.includes(category) 
-                    ? "bg-primary/10 text-primary font-medium" 
-                    : "text-muted-foreground"
-                }`}
-                onClick={() => toggleCategory(category)}
-              >
-                {category}
-              </Button>
-            ))}
-          </div>
-        </div>
-        
-        <div>
-          <h4 className="text-sm font-medium mb-3">Đánh giá tối thiểu</h4>
-          <div className="flex flex-wrap gap-2 mb-2">
-            {[0, 3, 3.5, 4, 4.5].map(rating => (
-              <Badge
-                key={rating}
-                variant={minRating === rating ? "default" : "outline"}
-                className="cursor-pointer"
-                onClick={() => setMinRating(rating)}
-              >
-                <div className="flex items-center gap-1">
-                  <Star className={cn("h-4 w-4", minRating >= rating ? "fill-amber-400 text-amber-400" : "text-gray-300")} />
-                  <span>{rating > 0 ? rating : "Tất cả"}</span>
+                <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                  {Object.entries(cityGroups).map(([cityKey, cityData]) => (
+                    <div key={cityKey} className="space-y-1">
+                      <button
+                        className="w-full flex items-center justify-between p-2 bg-primary/5 hover:bg-primary/10 transition-colors rounded-md"
+                        onClick={() => toggleGroup(cityKey)}
+                      >
+                        <span className="font-medium text-sm">{cityData.name}</span>
+                        <ChevronDown className={`h-3 w-3 transition-transform ${expandedGroups[cityKey] ? 'rotate-180' : ''}`} />
+                      </button>
+                      
+                      <AnimatePresence>
+                        {expandedGroups[cityKey] && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                          >
+                            <div className="flex flex-col gap-1 ml-2">
+                              {cityData.districts.map(district => {
+                                const cityLocation = `${district}, ${cityKey}`;
+                                return (
+                                  <motion.div 
+                                    key={district}
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    className="flex items-center"
+                                  >
+                                    <Button
+                                      variant="ghost"
+                                      className={`justify-start h-7 px-2 w-full text-left rounded-md transition-all text-sm ${
+                                        selectedCities.includes(district) 
+                                          ? "bg-primary/10 text-primary font-medium" 
+                                          : "text-muted-foreground hover:bg-primary/5"
+                                      }`}
+                                      onClick={() => toggleCity(district)}
+                                    >
+                                      {district}
+                                    </Button>
+                                  </motion.div>
+                                );
+                              })}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  ))}
                 </div>
-              </Badge>
-            ))}
-          </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
         
-        <div className="flex items-center">
-          <Checkbox 
-            id="verified-filter"
-            checked={showOnlyVerified}
-            onCheckedChange={() => setShowOnlyVerified(!showOnlyVerified)}
-          />
-          <Label htmlFor="verified-filter" className="ml-2 text-sm cursor-pointer">
-            Chỉ hiển thị cửa hàng đã xác minh
-          </Label>
+        {/* Categories Section */}
+        <div className="border rounded-lg overflow-hidden shadow-sm">
+          <button
+            onClick={() => toggleSection('categories')}
+            className="w-full flex items-center justify-between p-3 bg-primary/5 hover:bg-primary/10 transition-colors"
+          >
+            <div className="flex items-center">
+              <Utensils className="h-4 w-4 mr-2 text-primary" />
+              <span className="font-medium">Danh mục</span>
+              {selectedCategories.length > 0 && (
+                <Badge variant="default" className="ml-2 bg-primary text-white">
+                  {selectedCategories.length}
+                </Badge>
+              )}
+            </div>
+            <ChevronDown className={`h-4 w-4 transition-transform ${expandedSections.categories ? 'rotate-180' : ''}`} />
+          </button>
+          
+          <AnimatePresence>
+            {expandedSections.categories && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="p-3"
+              >
+                <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                  {Object.entries(categoryGroups).map(([groupKey, groupData]) => (
+                    <div key={groupKey} className="space-y-1">
+                      <button
+                        className="w-full flex items-center justify-between p-2 bg-primary/5 hover:bg-primary/10 transition-colors rounded-md"
+                        onClick={() => toggleGroup(groupKey)}
+                      >
+                        <span className="font-medium text-sm">{groupData.name}</span>
+                        <ChevronDown className={`h-3 w-3 transition-transform ${expandedGroups[groupKey] ? 'rotate-180' : ''}`} />
+                      </button>
+                      
+                      <AnimatePresence>
+                        {expandedGroups[groupKey] && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                          >
+                            <div className="flex flex-col gap-1 ml-2">
+                              {groupData.types.map(category => (
+                                <motion.div 
+                                  key={category}
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.98 }}
+                                  className="flex items-center"
+                                >
+                                  <Button
+                                    variant="ghost"
+                                    className={`justify-start h-7 px-2 w-full text-left rounded-md transition-all text-sm ${
+                                      selectedCategories.includes(category) 
+                                        ? "bg-primary/10 text-primary font-medium" 
+                                        : "text-muted-foreground hover:bg-primary/5"
+                                    }`}
+                                    onClick={() => toggleCategory(category)}
+                                  >
+                                    {category}
+                                  </Button>
+                                </motion.div>
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+        
+        {/* Rating Section */}
+        <div className="border rounded-lg overflow-hidden shadow-sm">
+          <button
+            onClick={() => toggleSection('rating')}
+            className="w-full flex items-center justify-between p-3 bg-primary/5 hover:bg-primary/10 transition-colors"
+          >
+            <div className="flex items-center">
+              <Star className="h-4 w-4 mr-2 text-primary" />
+              <span className="font-medium">Đánh giá tối thiểu</span>
+              {minRating > 0 && (
+                <Badge variant="default" className="ml-2 bg-primary text-white">
+                  {minRating}+
+                </Badge>
+              )}
+            </div>
+            <ChevronDown className={`h-4 w-4 transition-transform ${expandedSections.rating ? 'rotate-180' : ''}`} />
+          </button>
+          
+          <AnimatePresence>
+            {expandedSections.rating && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="p-3"
+              >
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {[0, 3, 3.5, 4, 4.5].map(rating => (
+                    <Badge
+                      key={rating}
+                      variant={minRating === rating ? "default" : "outline"}
+                      className={`cursor-pointer transition-all ${
+                        minRating === rating
+                          ? "bg-primary hover:bg-primary/90"
+                          : "hover:bg-primary/10"
+                      }`}
+                      onClick={() => setMinRating(rating)}
+                    >
+                      <div className="flex items-center gap-1">
+                        <Star className={cn(
+                          "h-4 w-4", 
+                          minRating >= rating 
+                            ? "fill-amber-400 text-amber-400" 
+                            : "text-gray-300"
+                        )} />
+                        <span>{rating > 0 ? rating : "Tất cả"}</span>
+                      </div>
+                    </Badge>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+        
+        {/* Verified Section */}
+        <div className="border rounded-lg overflow-hidden shadow-sm">
+          <button
+            onClick={() => toggleSection('verified')}
+            className="w-full flex items-center justify-between p-3 bg-primary/5 hover:bg-primary/10 transition-colors"
+          >
+            <div className="flex items-center">
+              <Check className="h-4 w-4 mr-2 text-primary" />
+              <span className="font-medium">Xác minh</span>
+              {showOnlyVerified && (
+                <Badge variant="default" className="ml-2 bg-primary text-white">
+                  1
+                </Badge>
+              )}
+            </div>
+            <ChevronDown className={`h-4 w-4 transition-transform ${expandedSections.verified ? 'rotate-180' : ''}`} />
+          </button>
+          
+          <AnimatePresence>
+            {expandedSections.verified && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="p-3"
+              >
+                <div className="flex items-center">
+                  <Checkbox 
+                    id="verified-filter"
+                    checked={showOnlyVerified}
+                    onCheckedChange={() => setShowOnlyVerified(!showOnlyVerified)}
+                    className="data-[state=checked]:bg-primary"
+                  />
+                  <Label htmlFor="verified-filter" className="ml-2 text-sm cursor-pointer">
+                    Chỉ hiển thị cửa hàng đã xác minh
+                  </Label>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </>
@@ -283,6 +517,23 @@ const Stores = () => {
   const [showOnlyVerified, setShowOnlyVerified] = useState(false);
   const [minRating, setMinRating] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [expandedSections, setExpandedSections] = useState({
+    cities: true,
+    categories: true,
+    rating: true,
+    verified: true
+  });
+  const [expandedGroups, setExpandedGroups] = useState({
+    "Hanoi": true,
+    "Ho Chi Minh City": false,
+    "Da Nang": false,
+    "Grocery": true,
+    "Dining": false,
+    "Specialty": false
+  });
+  const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(true);
+  const [activeFiltersCount, setActiveFiltersCount] = useState(0);
+  const [showFiltersBadge, setShowFiltersBadge] = useState(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -296,11 +547,12 @@ const Stores = () => {
   useEffect(() => {
     let filtered = allStores.filter(store => {
       const matchesSearch = store.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           store.location.toLowerCase().includes(searchTerm.toLowerCase());
+                          store.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (store.category && store.category.toLowerCase().includes(searchTerm.toLowerCase()));
       
       const matchesCity = selectedCities.length === 0 || 
-                         cities.some(city => 
-                           selectedCities.includes(city) && store.location.includes(city)
+                         selectedCities.some(city => 
+                           store.location.includes(city)
                          );
       
       const matchesCategory = selectedCategories.length === 0 || 
@@ -317,6 +569,17 @@ const Stores = () => {
     filtered = sortStoresList(filtered, sortBy);
     
     setFilteredStores(filtered);
+    
+    // Update active filters count for badge
+    const totalActiveFilters = 
+      selectedCities.length + 
+      selectedCategories.length + 
+      (showOnlyVerified ? 1 : 0) + 
+      (minRating > 0 ? 1 : 0);
+      
+    setActiveFiltersCount(totalActiveFilters);
+    setShowFiltersBadge(totalActiveFilters > 0);
+    
   }, [searchTerm, selectedCities, selectedCategories, sortBy, showOnlyVerified, minRating]);
 
   const sortStoresList = (stores: typeof allStores, sortOption: string) => {
@@ -357,6 +620,72 @@ const Stores = () => {
     setShowOnlyVerified(false);
     setMinRating(0);
   };
+
+  // Toggle section expand/collapse
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+
+  // Toggle group expand/collapse
+  const toggleGroup = (group: string) => {
+    setExpandedGroups(prev => ({
+      ...prev,
+      [group]: !prev[group]
+    }));
+  };
+
+  // Toggle filter sidebar visibility
+  const toggleFilterSidebar = () => {
+    setIsFilterSidebarOpen(prev => !prev);
+  };
+
+  // Compact Filter Icon Component
+  const CompactFilterIcon = () => (
+    <motion.button
+      onClick={toggleFilterSidebar}
+      className="fixed left-4 top-24 z-30 bg-primary text-white p-3 rounded-full shadow-md hover:shadow-lg transition-all"
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+    >
+      <SlidersHorizontal className="h-5 w-5" />
+      {showFiltersBadge && (
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold"
+        >
+          {activeFiltersCount}
+        </motion.div>
+      )}
+    </motion.button>
+  );
+
+  // Mobile Filter Button Component
+  const MobileFilterButton = () => (
+    <motion.button
+      onClick={() => setIsFiltersOpen(true)}
+      className="lg:hidden fixed bottom-6 right-6 z-40 bg-primary text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all"
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      initial={{ y: 20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+    >
+      <Filter className="h-6 w-6" />
+      {showFiltersBadge && (
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold"
+        >
+          {activeFiltersCount}
+        </motion.div>
+      )}
+    </motion.button>
+  );
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -480,34 +809,58 @@ const Stores = () => {
           {/* Main Content */}
           <Container>
             <motion.div 
-              className="flex flex-col lg:flex-row gap-6"
+              className="flex flex-col lg:flex-row gap-6 relative"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.3 }}
             >
-              {/* Desktop Filters */}
-              <motion.div 
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5 }}
-                className="hidden lg:block w-72 flex-shrink-0"
-              >
-                <div className="bg-white rounded-lg border shadow-sm p-6 sticky top-24">
-                  <FilterComponents 
-                    searchTerm={searchTerm}
-                    setSearchTerm={setSearchTerm}
-                    selectedCities={selectedCities}
-                    selectedCategories={selectedCategories}
-                    showOnlyVerified={showOnlyVerified}
-                    minRating={minRating}
-                    clearFilters={clearFilters}
-                    toggleCity={toggleCity}
-                    toggleCategory={toggleCategory}
-                    setShowOnlyVerified={setShowOnlyVerified}
-                    setMinRating={setMinRating}
-                  />
-                </div>
-              </motion.div>
+              {/* Compact Filter Icon - Shows when sidebar is collapsed */}
+              {!isFilterSidebarOpen && <CompactFilterIcon />}
+              
+              {/* Desktop Filters - Collapsible */}
+              <AnimatePresence mode="wait">
+                {isFilterSidebarOpen && (
+                  <motion.div 
+                    key="filter-sidebar"
+                    initial={{ opacity: 0, width: 0, x: -50 }}
+                    animate={{ opacity: 1, width: "18rem", x: 0 }}
+                    exit={{ opacity: 0, width: 0, x: -50 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="hidden lg:block w-72 flex-shrink-0 sticky top-24 self-start"
+                  >
+                    <div className="bg-white rounded-lg border shadow-sm p-5 relative">
+                      {/* Toggle button */}
+                      <motion.button
+                        className="absolute -right-3 top-1/2 transform -translate-y-1/2 bg-primary text-white p-1 rounded-full shadow-md hover:shadow-lg transition-all"
+                        onClick={toggleFilterSidebar}
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                      >
+                        <ChevronDown className="h-4 w-4 rotate-90" />
+                      </motion.button>
+                      
+                      <FilterComponents 
+                        searchTerm={searchTerm}
+                        setSearchTerm={setSearchTerm}
+                        selectedCities={selectedCities}
+                        selectedCategories={selectedCategories}
+                        showOnlyVerified={showOnlyVerified}
+                        minRating={minRating}
+                        clearFilters={clearFilters}
+                        toggleCity={toggleCity}
+                        toggleCategory={toggleCategory}
+                        setShowOnlyVerified={setShowOnlyVerified}
+                        setMinRating={setMinRating}
+                        expandedSections={expandedSections}
+                        expandedGroups={expandedGroups}
+                        toggleSection={toggleSection}
+                        toggleGroup={toggleGroup}
+                        activeFiltersCount={activeFiltersCount}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
               
               {/* Stores Grid */}
               <motion.div 
@@ -515,6 +868,7 @@ const Stores = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
                 className="flex-grow"
+                style={{ width: isFilterSidebarOpen ? "calc(100% - 18rem)" : "100%" }}
               >
                 <div className="mb-6 flex items-center justify-between bg-white p-3 rounded-lg shadow-sm">
                   <motion.p 
@@ -526,18 +880,39 @@ const Stores = () => {
                     Hiển thị <span className="font-medium text-primary">{filteredStores.length}</span> kết quả
                   </motion.p>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground hidden sm:inline">Sắp xếp theo:</span>
-                    <select 
-                      className="bg-white border rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value)}
-                    >
-                      {sortOptions.map(option => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="flex items-center bg-white border rounded-md">
+                      <span className="text-sm text-muted-foreground hidden sm:inline pl-3">Sắp xếp:</span>
+                      <select 
+                        className="bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer rounded-r-md"
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                      >
+                        {sortOptions.map(option => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div className="flex border rounded-md">
+                      <Button 
+                        size="sm"
+                        variant={viewMode === "grid" ? "default" : "ghost"}
+                        className={`rounded-l-md rounded-r-none h-8`}
+                        onClick={() => setViewMode("grid")}
+                      >
+                        <Grid3X3 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={viewMode === "map" ? "default" : "ghost"}
+                        className={`rounded-r-md rounded-l-none h-8`}
+                        onClick={() => setViewMode("map")}
+                      >
+                        <Map className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
                 
@@ -620,6 +995,59 @@ const Stores = () => {
       </AnimatePresence>
       
       <Footer />
+
+      {/* Floating filter button for mobile */}
+      <MobileFilterButton />
+
+      {/* Mobile Drawer for Filters */}
+      <Drawer open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
+        <DrawerContent className="max-h-[90vh]">
+          <DrawerHeader>
+            <DrawerTitle className="text-center text-lg font-semibold text-primary">Bộ lọc cửa hàng</DrawerTitle>
+            <DrawerDescription className="text-center">
+              Tùy chỉnh tìm kiếm để tìm cửa hàng phù hợp
+            </DrawerDescription>
+          </DrawerHeader>
+          
+          <div className="px-4 pb-0 overflow-y-auto max-h-[calc(90vh-10rem)]">
+            <FilterComponents 
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              selectedCities={selectedCities}
+              selectedCategories={selectedCategories}
+              showOnlyVerified={showOnlyVerified}
+              minRating={minRating}
+              clearFilters={clearFilters}
+              toggleCity={toggleCity}
+              toggleCategory={toggleCategory}
+              setShowOnlyVerified={setShowOnlyVerified}
+              setMinRating={setMinRating}
+              expandedSections={expandedSections}
+              expandedGroups={expandedGroups}
+              toggleSection={toggleSection}
+              toggleGroup={toggleGroup}
+              activeFiltersCount={activeFiltersCount}
+            />
+          </div>
+          
+          <DrawerFooter className="pt-2">
+            <Button 
+              onClick={() => setIsFiltersOpen(false)} 
+              className="w-full hover:bg-primary/90 transition-colors"
+            >
+              Xem {filteredStores.length} kết quả
+            </Button>
+            <DrawerClose asChild>
+              <Button 
+                variant="outline" 
+                className="hover:bg-primary/5 transition-colors"
+              >
+                Hủy
+              </Button>
+            </DrawerClose>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 };

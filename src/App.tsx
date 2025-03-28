@@ -32,6 +32,7 @@ import Payment3DSecure from "./pages/Payment3DSecure";
 import PaymentMomo from "./pages/PaymentMomo";
 import PaymentVNPay from "./pages/PaymentVNPay";
 import PaymentZaloPay from "./pages/PaymentZaloPay";
+import StoreRegister from "./pages/StoreRegister";
 
 // Tạo ErrorBoundary component để bắt lỗi
 class ErrorBoundary extends Component<{ children: ReactNode }> {
@@ -105,7 +106,12 @@ const App = () => (
                 <Route path="/report-issue" element={<ReportIssue />} />
                 <Route path="/complaints" element={<ComplaintSystem />} />
                 <Route path="/profile" element={<UserProfile />} />
+                <Route path="/profile/orders" element={<UserProfile />} />
+                <Route path="/profile/favorites" element={<UserProfile />} />
+                <Route path="/profile/rewards" element={<UserProfile />} />
+                <Route path="/profile/address" element={<UserProfile />} />
                 <Route path="/order-confirmation" element={<OrderConfirmation />} />
+                <Route path="/store-register" element={<StoreRegister />} />
             
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />

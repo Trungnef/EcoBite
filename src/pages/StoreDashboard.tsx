@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Container } from "@/components/ui/container";
@@ -8,28 +8,49 @@ import {
   TabsList, 
   TabsTrigger 
 } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { StoreProductList } from "@/components/StoreProductList";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
-} from "@/components/ui/card";
 import { 
   Store, 
-  Package, 
-  ShoppingCart, 
-  TrendingUp, 
-  UserCog, 
   Bell, 
   MessageSquare, 
-  Settings 
+  Settings,
+  X,
+  CheckCircle2,
+  AlertCircle,
+  FileText,
+  Activity
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useLocation } from "react-router-dom";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  StoreDashboardOverview,
+  StoreDashboardProducts,
+  StoreDashboardOrders,
+  StoreDashboardSchedule,
+  StoreDashboardProfile
+} from "@/components/store-dashboard";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function StoreDashboard() {
-  const [activeTab, setActiveTab] = useState("products");
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [showExpiryWarning, setShowExpiryWarning] = useState(true);
+  const location = useLocation();
+  
+  // Kiểm tra nếu người dùng vừa đăng ký xong
+  useEffect(() => {
+    if (location.state?.newRegistration) {
+      setShowWelcome(true);
+      // Tự động ẩn thông báo sau 10 giây
+      const timer = setTimeout(() => {
+        setShowWelcome(false);
+      }, 10000);
+      return () => clearTimeout(timer);
+    }
+  }, [location.state]);
   
   // Mock store data
   const storeData = {
@@ -39,6 +60,7 @@ export default function StoreDashboard() {
     totalOrders: 43,
     revenue: 12500000,
     avatarUrl: "/store-logo.jpg",
+    pendingOrders: 3
   };
   
   const formatCurrency = (amount: number) => {
@@ -54,146 +76,187 @@ export default function StoreDashboard() {
       <Navbar />
       <main className="pt-24 pb-16 bg-muted/30 min-h-screen">
         <Container>
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-            <div>
-              <h1 className="text-3xl font-bold flex items-center mb-2">
-                <Store className="mr-2 h-7 w-7 text-primary" />
-                Store Dashboard
-              </h1>
-              <p className="text-muted-foreground">
-                Manage your store, products, and monitor activity
-              </p>
-            </div>
-            
-            <div className="flex gap-3">
-              <Button variant="outline" size="icon">
-                <Bell className="h-5 w-5" />
-              </Button>
-              <Button variant="outline" size="icon">
-                <MessageSquare className="h-5 w-5" />
-              </Button>
-              <Button variant="outline" size="icon">
-                <Settings className="h-5 w-5" />
-              </Button>
-            </div>
-          </div>
+          <AnimatePresence>
+            {showWelcome && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+                className="mb-6"
+              >
+                <Alert variant="default" className="bg-green-50 border-green-200">
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                  <div className="flex-1">
+                    <AlertTitle className="text-green-800 flex items-center justify-between">
+                      <span>Chào mừng đến với EcoBite Seller!</span>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                        onClick={() => setShowWelcome(false)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </AlertTitle>
+                    <AlertDescription className="text-green-700">
+                      Đăng ký cửa hàng của bạn đã hoàn tất thành công. Bắt đầu bằng cách tải lên sản phẩm đầu tiên của bạn.
+                    </AlertDescription>
+                  </div>
+                </Alert>
+              </motion.div>
+            )}
+          </AnimatePresence>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Products
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <div className="text-2xl font-bold">{storeData.totalProducts}</div>
-                  <div className="p-2 bg-primary/10 rounded-full text-primary">
-                    <Package className="h-5 w-5" />
+          <AnimatePresence>
+            {showExpiryWarning && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+                className="mb-6"
+              >
+                <Alert variant="destructive" className="bg-red-50 border-red-200">
+                  <AlertCircle className="h-5 w-5 text-red-600" />
+                  <div className="flex-1">
+                    <AlertTitle className="text-red-800 flex items-center justify-between">
+                      <span>Cảnh báo sản phẩm gần hết hạn!</span>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                        onClick={() => setShowExpiryWarning(false)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </AlertTitle>
+                    <AlertDescription className="text-red-700">
+                      Bạn có 5 sản phẩm sẽ hết hạn trong vòng 7 ngày tới. Vui lòng kiểm tra tab Sản phẩm để xem chi tiết.
+                    </AlertDescription>
                   </div>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {storeData.productsNearExpiry} products expiring soon
+                </Alert>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+            <div className="flex items-center gap-4">
+              <Avatar className="h-12 w-12 border-2 border-primary/20">
+                <AvatarImage src={storeData.avatarUrl} alt={storeData.name} />
+                <AvatarFallback className="bg-primary/10 text-primary">FM</AvatarFallback>
+              </Avatar>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
+                  <Store className="h-6 w-6 text-primary" />
+                  <span>Fresh Market</span>
+                </h1>
+                <p className="text-muted-foreground">
+                  Quản lý cửa hàng, sản phẩm và theo dõi hoạt động
                 </p>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
             
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Orders
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <div className="text-2xl font-bold">{storeData.totalOrders}</div>
-                  <div className="p-2 bg-primary/10 rounded-full text-primary">
-                    <ShoppingCart className="h-5 w-5" />
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  12 new orders this week
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Revenue
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <div className="text-2xl font-bold">{formatCurrency(storeData.revenue)}</div>
-                  <div className="p-2 bg-primary/10 rounded-full text-primary">
-                    <TrendingUp className="h-5 w-5" />
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  +15% from last month
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Customer Satisfaction
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <div className="text-2xl font-bold">98%</div>
-                  <div className="p-2 bg-primary/10 rounded-full text-primary">
-                    <UserCog className="h-5 w-5" />
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Based on 86 reviews
-                </p>
-              </CardContent>
-            </Card>
+            <div className="flex items-center gap-3">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="icon" className="relative">
+                      <Activity className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Hiệu suất cửa hàng</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="icon" className="relative">
+                      <FileText className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Báo cáo</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="icon" className="relative">
+                      <Bell className="h-4 w-4" />
+                      {storeData.pendingOrders > 0 && (
+                        <Badge className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0">
+                          {storeData.pendingOrders}
+                        </Badge>
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Thông báo</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="icon">
+                      <MessageSquare className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Tin nhắn</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="icon">
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Cài đặt</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
           </div>
           
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid grid-cols-2 md:grid-cols-3 lg:w-[400px]">
-              <TabsTrigger value="products">Products</TabsTrigger>
-              <TabsTrigger value="orders">Orders</TabsTrigger>
-              <TabsTrigger value="profile">Store Profile</TabsTrigger>
+            <TabsList className="grid grid-cols-2 md:grid-cols-5 lg:w-[750px]">
+              <TabsTrigger value="dashboard">Tổng quan</TabsTrigger>
+              <TabsTrigger value="products">Sản phẩm</TabsTrigger>
+              <TabsTrigger value="orders">Đơn hàng</TabsTrigger>
+              <TabsTrigger value="schedule">Lịch giao hàng</TabsTrigger>
+              <TabsTrigger value="profile">Thông tin cửa hàng</TabsTrigger>
             </TabsList>
             
-            <TabsContent value="products" className="space-y-6">
-              <div className="bg-white p-6 rounded-lg border shadow-sm">
-                <h2 className="text-xl font-semibold mb-6">Manage Products</h2>
-                <StoreProductList />
-              </div>
+            <TabsContent value="dashboard">
+              <StoreDashboardOverview formatCurrency={formatCurrency} />
             </TabsContent>
             
-            <TabsContent value="orders" className="space-y-6">
-              <div className="bg-white p-6 rounded-lg border shadow-sm">
-                <h2 className="text-xl font-semibold mb-6">Recent Orders</h2>
-                <div className="text-center py-12">
-                  <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Coming Soon</h3>
-                  <p className="text-muted-foreground max-w-md mx-auto">
-                    The orders management feature is coming in the next update. You'll be able to track and fulfill customer orders here.
-                  </p>
-                </div>
-              </div>
+            <TabsContent value="products">
+              <StoreDashboardProducts />
             </TabsContent>
             
-            <TabsContent value="profile" className="space-y-6">
-              <div className="bg-white p-6 rounded-lg border shadow-sm">
-                <h2 className="text-xl font-semibold mb-6">Store Details</h2>
-                <div className="text-center py-12">
-                  <Store className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Coming Soon</h3>
-                  <p className="text-muted-foreground max-w-md mx-auto">
-                    The store profile management feature is coming in the next update. You'll be able to update your store information, hours, and policies here.
-                  </p>
-                </div>
-              </div>
+            <TabsContent value="orders">
+              <StoreDashboardOrders />
+            </TabsContent>
+            
+            <TabsContent value="schedule">
+              <StoreDashboardSchedule />
+            </TabsContent>
+            
+            <TabsContent value="profile">
+              <StoreDashboardProfile />
             </TabsContent>
           </Tabs>
         </Container>

@@ -21,6 +21,8 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string, role: UserRole) => Promise<boolean>;
   register: (email: string, password: string, name: string, role: UserRole) => Promise<boolean>;
+  loginWithProvider: (provider: "google" | "facebook", role: UserRole) => Promise<boolean>;
+  registerWithProvider: (provider: "google" | "facebook", role: UserRole) => Promise<boolean>;
   logout: () => void;
   updateUser: (userData: Partial<User>) => void;
   addToFavorites: (product: any) => void; // Updated to accept a full product object
@@ -44,7 +46,7 @@ const mockUsers: User[] = [
   {
     id: "2",
     name: "Fresh Market",
-    email: "store@example.com",
+    email: "seller@example.com",
     role: "seller",
     storeId: "store-1",
     profileImage: "/images/avatars/seller.jpg"
@@ -211,6 +213,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     localStorage.removeItem("user");
     toast.info("Bạn đã đăng xuất thành công");
+    
+    // Chuyển hướng về trang chủ
+    window.location.href = "/";
   };
   
   const updateUser = (userData: Partial<User>) => {
@@ -244,6 +249,76 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const loginWithProvider = async (provider: "google" | "facebook", role: UserRole): Promise<boolean> => {
+    setIsLoading(true);
+    
+    try {
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Simulate social login authentication
+      // In a real app, this would redirect to OAuth provider and handle callback
+      
+      // For demo, create a mock user from social login
+      const mockSocialUser: User = {
+        id: `user-social-${Date.now()}`,
+        name: provider === "google" ? "Google User" : "Facebook User",
+        email: provider === "google" ? "user@gmail.com" : "user@facebook.com",
+        role: role,
+        favorites: [],
+        loyaltyPoints: 0,
+        profileImage: provider === "google" 
+          ? 'https://lh3.googleusercontent.com/a/default-user' 
+          : 'https://graph.facebook.com/123456789/picture',
+      };
+      
+      setUser(mockSocialUser);
+      toast.success(`Đăng nhập với ${provider} thành công!`);
+      setIsLoading(false);
+      return true;
+    } catch (error) {
+      console.error("Social login error:", error);
+      toast.error(`Đăng nhập bằng ${provider} thất bại`);
+      setIsLoading(false);
+      return false;
+    }
+  };
+  
+  const registerWithProvider = async (provider: "google" | "facebook", role: UserRole): Promise<boolean> => {
+    setIsLoading(true);
+    
+    try {
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Simulate social registration
+      // In a real app, this would redirect to OAuth provider and handle callback
+      
+      // For demo, create a mock user from social registration
+      const mockSocialUser: User = {
+        id: `user-social-${Date.now()}`,
+        name: provider === "google" ? "Google New User" : "Facebook New User",
+        email: provider === "google" ? "newuser@gmail.com" : "newuser@facebook.com",
+        role: role,
+        favorites: [],
+        loyaltyPoints: 10, // Bonus points for social signup
+        profileImage: provider === "google" 
+          ? 'https://lh3.googleusercontent.com/a/default-user' 
+          : 'https://graph.facebook.com/123456789/picture',
+      };
+      
+      setUser(mockSocialUser);
+      toast.success(`Đăng ký với ${provider} thành công!`);
+      setIsLoading(false);
+      return true;
+    } catch (error) {
+      console.error("Social registration error:", error);
+      toast.error(`Đăng ký bằng ${provider} thất bại`);
+      setIsLoading(false);
+      return false;
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -252,6 +327,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         login,
         register,
+        loginWithProvider,
+        registerWithProvider,
         logout,
         updateUser,
         addToFavorites,

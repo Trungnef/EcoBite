@@ -138,7 +138,39 @@ const allDeals = [
 
 // Extract unique categories and locations
 const categories = [...new Set(allDeals.map(deal => deal.category))];
-const locations = [...new Set(allDeals.map(deal => deal.location))];
+
+// Cấu trúc lại locations thành nhóm theo thành phố
+const locationGroups = {
+  "Hà Nội": {
+    name: "Hà Nội",
+    districts: [
+      "Quận Cầu Giấy", "Quận Đống Đa", "Quận Ba Đình", "Quận Hoàn Kiếm", 
+      "Quận Hai Bà Trưng", "Quận Long Biên", "Quận Thanh Xuân", 
+      "Quận Hà Đông", "Quận Nam Từ Liêm", "Quận Bắc Từ Liêm"
+    ]
+  },
+  "TP.HCM": {
+    name: "TP. Hồ Chí Minh",
+    districts: [
+      "Quận 1", "Quận 2", "Quận 3", "Quận 4", "Quận 5", "Quận 7", 
+      "Quận 10", "Quận Bình Thạnh", "Quận Phú Nhuận", "Quận Gò Vấp", 
+      "Quận Tân Bình", "Quận Tân Phú", "Quận Thủ Đức"
+    ]
+  },
+  "Đà Nẵng": {
+    name: "Đà Nẵng",
+    districts: [
+      "Quận Hải Châu", "Quận Thanh Khê", "Quận Sơn Trà", 
+      "Quận Ngũ Hành Sơn", "Quận Liên Chiểu", "Quận Cẩm Lệ"
+    ]
+  }
+};
+
+// Flatten locations for backward compatibility
+const locations = Object.entries(locationGroups).flatMap(([city, data]) => 
+  data.districts.map(district => `${district}, ${city}`)
+);
+
 const uniqueTags = categories; // Use categories as tags for filtering
 
 // Additional filter options
@@ -152,6 +184,29 @@ const expiryRanges = [
   { label: "Hôm nay", value: "today" },
   { label: "24 giờ tới", value: "24h" },
   { label: "Tuần này", value: "week" }
+];
+
+const priceRanges = [
+  { label: "Dưới 50k", value: "0-50" },
+  { label: "50k - 100k", value: "50-100" },
+  { label: "100k - 200k", value: "100-200" },
+  { label: "200k - 500k", value: "200-500" },
+  { label: "Trên 500k", value: "500+" }
+];
+
+const ratingRanges = [
+  { label: "4.5⭐ trở lên", value: "4.5+" },
+  { label: "4.0⭐ trở lên", value: "4.0+" },
+  { label: "3.5⭐ trở lên", value: "3.5+" }
+];
+
+const sortOptions = [
+  { label: "Giảm giá cao nhất", value: "discount" },
+  { label: "Giá: Thấp đến cao", value: "price-low" },
+  { label: "Giá: Cao đến thấp", value: "price-high" },
+  { label: "Sắp hết hạn", value: "expiry" },
+  { label: "Mới nhất", value: "newest" },
+  { label: "Đánh giá cao nhất", value: "rating" }
 ];
 
 // Animation variants
@@ -180,6 +235,8 @@ const Deals = () => {
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [selectedDiscountRanges, setSelectedDiscountRanges] = useState<string[]>([]);
   const [selectedExpiryRanges, setSelectedExpiryRanges] = useState<string[]>([]);
+  const [selectedPriceRanges, setSelectedPriceRanges] = useState<string[]>([]);
+  const [selectedRatingRanges, setSelectedRatingRanges] = useState<string[]>([]);
   const [sortOption, setSortOption] = useState("discount");
   const [filteredDeals, setFilteredDeals] = useState(allDeals);
   const [isLoading, setIsLoading] = useState(true);
@@ -187,6 +244,22 @@ const Deals = () => {
   const [openMobileFilters, setOpenMobileFilters] = useState(false);
   const [activeFilter, setActiveFilter] = useState('');
   const { user, isAuthenticated, updateUser } = useAuth();
+  const [expandedSections, setExpandedSections] = useState({
+    categories: true,
+    locations: true,
+    price: true,
+    discount: true,
+    expiry: true,
+    rating: true
+  });
+  const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(true);
+  const [expandedCities, setExpandedCities] = useState<Record<string, boolean>>({
+    "TP.HCM": false,
+    "Hà Nội": false,
+    "Đà Nẵng": false
+  });
+  const [showFiltersBadge, setShowFiltersBadge] = useState(false);
+  const [activeFiltersCount, setActiveFiltersCount] = useState(0);
 
   // Handle favorite toggle
   const handleToggleFavorite = (deal: typeof allDeals[0], isFavorite: boolean) => {
@@ -247,6 +320,19 @@ const Deals = () => {
     return () => clearTimeout(timeout);
   }, []);
 
+  // Toggle city expansion in location filter
+  const toggleCity = (city: string) => {
+    setExpandedCities(prev => ({
+      ...prev,
+      [city]: !prev[city]
+    }));
+  };
+
+  // Toggle filter sidebar visibility
+  const toggleFilterSidebar = () => {
+    setIsFilterSidebarOpen(prev => !prev);
+  };
+
   // Apply filters and sorting
   useEffect(() => {
     let filtered = allDeals.filter(deal => {
@@ -285,7 +371,28 @@ const Deals = () => {
                              return false;
                            });
       
-      return matchesSearch && matchesCategory && matchesLocation && matchesDiscount && matchesExpiry;
+      // Price range filter
+      const matchesPrice = selectedPriceRanges.length === 0 ||
+                          selectedPriceRanges.some(range => {
+                            if (range === "0-50") {
+                              return deal.discountPrice < 50000;
+                            } else if (range === "50-100") {
+                              return deal.discountPrice >= 50000 && deal.discountPrice < 100000;
+                            } else if (range === "100-200") {
+                              return deal.discountPrice >= 100000 && deal.discountPrice < 200000;
+                            } else if (range === "200-500") {
+                              return deal.discountPrice >= 200000 && deal.discountPrice < 500000;
+                            } else if (range === "500+") {
+                              return deal.discountPrice >= 500000;
+                            }
+                            return false;
+                          });
+      
+      // Rating filter (mock implementation since we don't have ratings in the current data)
+      const matchesRating = selectedRatingRanges.length === 0;
+      
+      return matchesSearch && matchesCategory && matchesLocation && matchesDiscount && 
+             matchesExpiry && matchesPrice && matchesRating;
     });
     
     // Apply sorting
@@ -324,10 +431,28 @@ const Deals = () => {
         // In a real app, you would sort by date added
         filtered = [...filtered];
         break;
+      case "rating":
+        // In a real app, you would sort by rating
+        filtered = [...filtered];
+        break;
     }
     
     setFilteredDeals(filtered);
-  }, [searchTerm, selectedCategories, selectedLocations, selectedDiscountRanges, selectedExpiryRanges, sortOption]);
+
+    // Update active filters count for badge
+    const totalActiveFilters = 
+      selectedCategories.length + 
+      selectedLocations.length + 
+      selectedDiscountRanges.length + 
+      selectedExpiryRanges.length + 
+      selectedPriceRanges.length + 
+      selectedRatingRanges.length;
+
+    setActiveFiltersCount(totalActiveFilters);
+    setShowFiltersBadge(totalActiveFilters > 0);
+    
+  }, [searchTerm, selectedCategories, selectedLocations, selectedDiscountRanges, 
+      selectedExpiryRanges, selectedPriceRanges, selectedRatingRanges, sortOption]);
 
   const toggleCategory = (category: string) => {
     setSelectedCategories(prev => 
@@ -361,12 +486,37 @@ const Deals = () => {
     );
   };
 
+  const togglePriceRange = (range: string) => {
+    setSelectedPriceRanges(prev => 
+      prev.includes(range)
+        ? prev.filter(r => r !== range)
+        : [...prev, range]
+    );
+  };
+
+  const toggleRatingRange = (range: string) => {
+    setSelectedRatingRanges(prev => 
+      prev.includes(range)
+        ? prev.filter(r => r !== range)
+        : [...prev, range]
+    );
+  };
+
+  const toggleSection = (section: keyof typeof expandedSections) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+
   const clearFilters = () => {
     setSearchTerm("");
     setSelectedCategories([]);
     setSelectedLocations([]);
     setSelectedDiscountRanges([]);
     setSelectedExpiryRanges([]);
+    setSelectedPriceRanges([]);
+    setSelectedRatingRanges([]);
     setSortOption("discount");
   };
 
@@ -374,16 +524,26 @@ const Deals = () => {
     setSortOption(e.target.value);
   };
 
-  // Filter components to show inside both desktop sidebar and mobile drawer
+  // Improved FilterComponents with groups and animations
   const FilterComponents = () => (
     <>
       <div className="flex justify-between items-center mb-4">
-        <h3 className="font-medium text-primary">Bộ lọc</h3>
+        <h3 className="font-medium text-primary flex items-center gap-2">
+          <SlidersHorizontal className="h-4 w-4" />
+          Bộ lọc
+          {showFiltersBadge && (
+            <Badge variant="default" className="bg-primary text-white ml-2">
+              {activeFiltersCount}
+            </Badge>
+          )}
+        </h3>
         {(searchTerm || 
           selectedCategories.length > 0 || 
           selectedLocations.length > 0 || 
           selectedDiscountRanges.length > 0 ||
-          selectedExpiryRanges.length > 0) && (
+          selectedExpiryRanges.length > 0 ||
+          selectedPriceRanges.length > 0 ||
+          selectedRatingRanges.length > 0) && (
           <Button 
             variant="ghost" 
             size="sm" 
@@ -396,15 +556,34 @@ const Deals = () => {
         )}
       </div>
                 
-      <div className="space-y-6">
-        <div>
-          <h4 className="text-sm font-medium mb-3 flex items-center">
-            <span className="bg-primary/10 text-primary p-1 rounded-md mr-2">
-              <Tag className="h-3 w-3" />
-            </span>
-            Danh Mục
-          </h4>
-          <div className="flex flex-col gap-1">
+      <div className="space-y-3">
+        {/* Categories Section */}
+        <div className="border rounded-lg overflow-hidden shadow-sm">
+          <button
+            onClick={() => toggleSection('categories')}
+            className="w-full flex items-center justify-between p-3 bg-primary/5 hover:bg-primary/10 transition-colors"
+          >
+            <div className="flex items-center">
+              <Tag className="h-4 w-4 mr-2 text-primary" />
+              <span className="font-medium">Danh Mục</span>
+              {selectedCategories.length > 0 && (
+                <Badge variant="default" className="ml-2 bg-primary text-white">
+                  {selectedCategories.length}
+                </Badge>
+              )}
+            </div>
+            <ChevronDown className={`h-4 w-4 transition-transform ${expandedSections.categories ? 'rotate-180' : ''}`} />
+          </button>
+          <AnimatePresence>
+            {expandedSections.categories && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="p-3"
+              >
+                <div className="flex flex-col gap-1 max-h-60 overflow-y-auto pr-1">
             {categories.map(category => (
               <motion.div 
                 key={category}
@@ -426,114 +605,302 @@ const Deals = () => {
               </motion.div>
             ))}
           </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
                   
-        <div>
-          <h4 className="text-sm font-medium mb-3 flex items-center">
-            <span className="bg-primary/10 text-primary p-1 rounded-md mr-2">
-              <MapPin className="h-3 w-3" />
-            </span>
-            Khu Vực
-          </h4>
-          <div className="flex flex-col gap-1">
-            {locations.map(location => (
+        {/* Locations Section - Grouped by City */}
+        <div className="border rounded-lg overflow-hidden shadow-sm">
+          <button
+            onClick={() => toggleSection('locations')}
+            className="w-full flex items-center justify-between p-3 bg-primary/5 hover:bg-primary/10 transition-colors"
+          >
+            <div className="flex items-center">
+              <MapPin className="h-4 w-4 mr-2 text-primary" />
+              <span className="font-medium">Khu Vực</span>
+              {selectedLocations.length > 0 && (
+                <Badge variant="default" className="ml-2 bg-primary text-white">
+                  {selectedLocations.length}
+                </Badge>
+              )}
+            </div>
+            <ChevronDown className={`h-4 w-4 transition-transform ${expandedSections.locations ? 'rotate-180' : ''}`} />
+          </button>
+          <AnimatePresence>
+            {expandedSections.locations && (
               <motion.div 
-                key={location}
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="p-3"
+              >
+                <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                  {Object.entries(locationGroups).map(([cityKey, cityData]) => (
+                    <div key={cityKey} className="space-y-1">
+                      <button
+                        className="w-full flex items-center justify-between p-2 bg-primary/5 hover:bg-primary/10 transition-colors rounded-md"
+                        onClick={() => toggleCity(cityKey)}
+                      >
+                        <span className="font-medium text-sm">{cityData.name}</span>
+                        <ChevronDown className={`h-3 w-3 transition-transform ${expandedCities[cityKey] ? 'rotate-180' : ''}`} />
+                      </button>
+                      
+                      <AnimatePresence>
+                        {expandedCities[cityKey] && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                          >
+                            <div className="flex flex-col gap-1 ml-2">
+                              {cityData.districts.map(district => {
+                                const fullLocation = `${district}, ${cityKey}`;
+                                return (
+                                  <motion.div 
+                                    key={district}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 className="flex items-center"
               >
                 <Button
                   variant="ghost"
-                  className={`justify-start h-8 px-2 w-full text-left rounded-md transition-all ${
-                    selectedLocations.includes(location) 
+                                      className={`justify-start h-7 px-2 w-full text-left rounded-md transition-all text-sm ${
+                                        selectedLocations.includes(fullLocation) 
                       ? "bg-primary/10 text-primary font-medium" 
                       : "text-muted-foreground hover:bg-primary/5"
                   }`}
-                  onClick={() => toggleLocation(location)}
+                                      onClick={() => toggleLocation(fullLocation)}
                 >
-                  {location}
+                                      {district}
                 </Button>
               </motion.div>
+                                );
+                              })}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
             ))}
           </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
         
-        <div>
-          <h4 className="text-sm font-medium mb-3 flex items-center">
-            <span className="bg-primary/10 text-primary p-1 rounded-md mr-2">
-              <Percent className="h-3 w-3" />
-            </span>
-            Mức Giảm Giá
-          </h4>
+        {/* Price Range Section */}
+        <div className="border rounded-lg overflow-hidden shadow-sm">
+          <button
+            onClick={() => toggleSection('price')}
+            className="w-full flex items-center justify-between p-3 bg-primary/5 hover:bg-primary/10 transition-colors"
+          >
+            <div className="flex items-center">
+              <Store className="h-4 w-4 mr-2 text-primary" />
+              <span className="font-medium">Khoảng Giá</span>
+              {selectedPriceRanges.length > 0 && (
+                <Badge variant="default" className="ml-2 bg-primary text-white">
+                  {selectedPriceRanges.length}
+                </Badge>
+              )}
+            </div>
+            <ChevronDown className={`h-4 w-4 transition-transform ${expandedSections.price ? 'rotate-180' : ''}`} />
+          </button>
+          <AnimatePresence>
+            {expandedSections.price && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="p-3"
+              >
+                <div className="flex flex-wrap gap-2">
+                  {priceRanges.map(range => (
+                    <Badge
+                      key={range.value}
+                      variant={selectedPriceRanges.includes(range.value) ? "default" : "outline"}
+                      className={`cursor-pointer transition-all ${
+                        selectedPriceRanges.includes(range.value)
+                          ? "bg-primary hover:bg-primary/90"
+                          : "hover:bg-primary/10"
+                      }`}
+                      onClick={() => togglePriceRange(range.value)}
+                    >
+                      {range.label}
+                    </Badge>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Discount Range Section */}
+        <div className="border rounded-lg overflow-hidden shadow-sm">
+          <button
+            onClick={() => toggleSection('discount')}
+            className="w-full flex items-center justify-between p-3 bg-primary/5 hover:bg-primary/10 transition-colors"
+          >
+            <div className="flex items-center">
+              <Percent className="h-4 w-4 mr-2 text-primary" />
+              <span className="font-medium">Mức Giảm Giá</span>
+              {selectedDiscountRanges.length > 0 && (
+                <Badge variant="default" className="ml-2 bg-primary text-white">
+                  {selectedDiscountRanges.length}
+                </Badge>
+              )}
+            </div>
+            <ChevronDown className={`h-4 w-4 transition-transform ${expandedSections.discount ? 'rotate-180' : ''}`} />
+          </button>
+          <AnimatePresence>
+            {expandedSections.discount && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="p-3"
+              >
           <div className="flex flex-wrap gap-2">
             {discountRanges.map(range => (
               <Badge
                 key={range.value}
                 variant={selectedDiscountRanges.includes(range.value) ? "default" : "outline"}
-                className="cursor-pointer"
+                      className={`cursor-pointer transition-all ${
+                        selectedDiscountRanges.includes(range.value)
+                          ? "bg-primary hover:bg-primary/90"
+                          : "hover:bg-primary/10"
+                      }`}
                 onClick={() => toggleDiscountRange(range.value)}
               >
                 {range.label}
               </Badge>
             ))}
           </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
         
-        <div>
-          <h4 className="text-sm font-medium mb-3 flex items-center">
-            <span className="bg-primary/10 text-primary p-1 rounded-md mr-2">
-              <Clock className="h-3 w-3" />
-            </span>
-            Thời Gian Hết Hạn
-          </h4>
+        {/* Expiry Range Section */}
+        <div className="border rounded-lg overflow-hidden shadow-sm">
+          <button
+            onClick={() => toggleSection('expiry')}
+            className="w-full flex items-center justify-between p-3 bg-primary/5 hover:bg-primary/10 transition-colors"
+          >
+            <div className="flex items-center">
+              <Clock className="h-4 w-4 mr-2 text-primary" />
+              <span className="font-medium">Thời Gian Hết Hạn</span>
+              {selectedExpiryRanges.length > 0 && (
+                <Badge variant="default" className="ml-2 bg-primary text-white">
+                  {selectedExpiryRanges.length}
+                </Badge>
+              )}
+            </div>
+            <ChevronDown className={`h-4 w-4 transition-transform ${expandedSections.expiry ? 'rotate-180' : ''}`} />
+          </button>
+          <AnimatePresence>
+            {expandedSections.expiry && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="p-3"
+              >
           <div className="flex flex-wrap gap-2">
             {expiryRanges.map(range => (
               <Badge
                 key={range.value}
                 variant={selectedExpiryRanges.includes(range.value) ? "default" : "outline"}
-                className="cursor-pointer"
+                      className={`cursor-pointer transition-all ${
+                        selectedExpiryRanges.includes(range.value)
+                          ? "bg-primary hover:bg-primary/90"
+                          : "hover:bg-primary/10"
+                      }`}
                 onClick={() => toggleExpiryRange(range.value)}
               >
                 {range.label}
               </Badge>
             ))}
           </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
                   
-        {/* Selected filters summary */}
-        {(selectedCategories.length > 0 || 
-          selectedLocations.length > 0 || 
-          selectedDiscountRanges.length > 0 ||
-          selectedExpiryRanges.length > 0) && (
-          <div className="pt-4 border-t">
-            <h4 className="text-sm font-medium mb-2">Đã chọn:</h4>
-            <div className="flex flex-wrap gap-1">
-              {selectedCategories.map(cat => (
-                <Badge key={cat} variant="secondary" className="cursor-pointer bg-primary/10 hover:bg-primary/20" onClick={() => toggleCategory(cat)}>
-                  {cat} <X className="ml-1 h-3 w-3" />
+        {/* Rating Range Section */}
+        <div className="border rounded-lg overflow-hidden shadow-sm">
+          <button
+            onClick={() => toggleSection('rating')}
+            className="w-full flex items-center justify-between p-3 bg-primary/5 hover:bg-primary/10 transition-colors"
+          >
+            <div className="flex items-center">
+              <Sparkles className="h-4 w-4 mr-2 text-primary" />
+              <span className="font-medium">Đánh Giá</span>
+              {selectedRatingRanges.length > 0 && (
+                <Badge variant="default" className="ml-2 bg-primary text-white">
+                  {selectedRatingRanges.length}
                 </Badge>
-              ))}
-              {selectedLocations.map(loc => (
-                <Badge key={loc} variant="secondary" className="cursor-pointer bg-primary/10 hover:bg-primary/20" onClick={() => toggleLocation(loc)}>
-                  {loc} <X className="ml-1 h-3 w-3" />
-                </Badge>
-              ))}
-              {selectedDiscountRanges.map(range => (
-                <Badge key={range} variant="secondary" className="cursor-pointer bg-primary/10 hover:bg-primary/20" onClick={() => toggleDiscountRange(range)}>
-                  {discountRanges.find(r => r.value === range)?.label} <X className="ml-1 h-3 w-3" />
-                </Badge>
-              ))}
-              {selectedExpiryRanges.map(range => (
-                <Badge key={range} variant="secondary" className="cursor-pointer bg-primary/10 hover:bg-primary/20" onClick={() => toggleExpiryRange(range)}>
-                  {expiryRanges.find(r => r.value === range)?.label} <X className="ml-1 h-3 w-3" />
+              )}
+            </div>
+            <ChevronDown className={`h-4 w-4 transition-transform ${expandedSections.rating ? 'rotate-180' : ''}`} />
+          </button>
+          <AnimatePresence>
+            {expandedSections.rating && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="p-3"
+              >
+                <div className="flex flex-wrap gap-2">
+                  {ratingRanges.map(range => (
+                    <Badge
+                      key={range.value}
+                      variant={selectedRatingRanges.includes(range.value) ? "default" : "outline"}
+                      className={`cursor-pointer transition-all ${
+                        selectedRatingRanges.includes(range.value)
+                          ? "bg-primary hover:bg-primary/90"
+                          : "hover:bg-primary/10"
+                      }`}
+                      onClick={() => toggleRatingRange(range.value)}
+                    >
+                      {range.label}
                 </Badge>
               ))}
             </div>
-          </div>
+              </motion.div>
         )}
+          </AnimatePresence>
+        </div>
       </div>
     </>
+  );
+
+  // Compact Filter Icon Component
+  const CompactFilterIcon = () => (
+    <motion.button
+      onClick={toggleFilterSidebar}
+      className="fixed left-4 top-24 z-30 bg-primary text-white p-3 rounded-full shadow-md hover:shadow-lg transition-all"
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+    >
+      <SlidersHorizontal className="h-5 w-5" />
+      {showFiltersBadge && (
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold"
+        >
+          {activeFiltersCount}
+        </motion.div>
+      )}
+    </motion.button>
   );
 
   return (
@@ -683,22 +1050,41 @@ const Deals = () => {
           {/* Main Content */}
           <Container>
             <motion.div 
-              className="flex flex-col lg:flex-row gap-6"
+              className="flex flex-col lg:flex-row gap-6 relative"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.3 }}
             >
-              {/* Desktop Filters */}
+              {/* Compact Filter Icon - Shows when sidebar is collapsed */}
+              {!isFilterSidebarOpen && <CompactFilterIcon />}
+              
+              {/* Desktop Filters - Collapsible */}
+              <AnimatePresence mode="wait">
+                {isFilterSidebarOpen && (
               <motion.div 
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5 }}
-                className="hidden lg:block w-72 flex-shrink-0"
-              >
-                <div className="bg-white rounded-lg border shadow-sm p-6 sticky top-24">
+                    key="filter-sidebar"
+                    initial={{ opacity: 0, width: 0, x: -50 }}
+                    animate={{ opacity: 1, width: "18rem", x: 0 }}
+                    exit={{ opacity: 0, width: 0, x: -50 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="hidden lg:block w-72 flex-shrink-0 sticky top-24 self-start"
+                  >
+                    <div className="bg-white rounded-lg border shadow-sm p-5 relative">
+                      {/* Toggle button */}
+                      <motion.button
+                        className="absolute -right-3 top-1/2 transform -translate-y-1/2 bg-primary text-white p-1 rounded-full shadow-md hover:shadow-lg transition-all"
+                        onClick={toggleFilterSidebar}
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                      >
+                        <ChevronDown className="h-4 w-4 rotate-90" />
+                      </motion.button>
+                      
                   <FilterComponents />
                 </div>
               </motion.div>
+                )}
+              </AnimatePresence>
               
               {/* Deals Grid */}
               <motion.div 
@@ -706,6 +1092,7 @@ const Deals = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
                 className="flex-grow"
+                style={{ width: isFilterSidebarOpen ? "calc(100% - 18rem)" : "100%" }}
               >
                 <div className="mb-6 flex items-center justify-between bg-white p-3 rounded-lg shadow-sm">
                   <motion.p 
@@ -723,10 +1110,9 @@ const Deals = () => {
                       value={sortOption}
                       onChange={handleSortChange}
                     >
-                      <option value="discount">Giảm giá cao nhất</option>
-                      <option value="price-low">Giá: Thấp đến cao</option>
-                      <option value="price-high">Giá: Cao đến thấp</option>
-                      <option value="expiry">Sắp hết hạn</option>
+                      {sortOptions.map(option => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
